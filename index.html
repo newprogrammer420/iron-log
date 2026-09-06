@@ -536,9 +536,10 @@ function fmtDate(s){
   return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
 }
 function addDays(dateStr, delta){
-  const d = new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()+delta);
-  return d.toISOString().slice(0,10);
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate()+delta);
+  return dt.toISOString().slice(0,10);
 }
 function renderMacroBar(label, val, target, unitLbl){
   const pct = target>0 ? Math.min(100, Math.round((val/target)*100)) : 0;
@@ -1055,7 +1056,11 @@ function renderModal(){
   } else if(m.type==='addFood'){
     const d = m.data||{};
     const mode = d.mode || 'new'; // 'new' | 'quickadd' | 'edit'
-    const baseServing = d.servingSize!=null && d.servingSize!=='' ? d.servingSize : 100;
+    let baseServing = 100;
+    if(d.servingSize!=null && d.servingSize!==''){
+      const n = Number(d.servingSize);
+      if(!isNaN(n) && n>0) baseServing = n;
+    }
     const baseCal = d.calories!=null ? d.calories : '';
     const basePro = d.protein!=null ? d.protein : '';
     const baseCarb = d.carbs!=null ? d.carbs : '';
@@ -1067,7 +1072,6 @@ function renderModal(){
         <div><label class="field-label">Amount</label><input type="number" id="f-serving" value="${baseServing}"></div>
         <div><label class="field-label">Unit</label><input type="text" id="f-servingunit" value="${d.servingUnit||'g'}"></div>
       </div>
-      <div class="subhead" style="margin-top:6px; margin-bottom:0">Nutrition for this amount — change it and the numbers below scale automatically.</div>
       <div class="grid2" style="margin-top:12px">
         <div><label class="field-label">Calories</label><input type="number" id="f-cal" value="${baseCal}"></div>
         <div><label class="field-label">Protein g</label><input type="number" id="f-pro" value="${basePro}"></div>
