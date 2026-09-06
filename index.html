@@ -488,6 +488,9 @@ async function dbAddToLibrary(name, food){
     calories:food.calories, protein:food.protein, carbs:food.carbs, fat:food.fat
   });
 }
+async function dbDeleteFromLibrary(id){
+  await supabaseClient.from('food_library').delete().eq('id', id);
+}
 
 const DEFAULT_SETTINGS_DB = {
   calorie_target:2200, protein_target:150, carb_target:220, fat_target:70,
@@ -659,6 +662,10 @@ async function addToLibrary(food){
   food.id = food.id || uid();
   STATE.foodLib.unshift(food);
   await dbAddToLibrary(STATE.activeProfile, food);
+}
+async function removeFromLibrary(id){
+  STATE.foodLib = STATE.foodLib.filter(f=>f.id!==id);
+  await dbDeleteFromLibrary(id);
 }
 async function saveSettings(newSettings){
   STATE.settings = {...STATE.settings, ...newSettings};
@@ -914,7 +921,10 @@ function renderFood(){
         ${STATE.foodLib.slice(0,10).map(f=>`
           <div class="food-lib-row">
             <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
-            <button data-quickfoodedit="${f.id}">Add</button>
+            <span style="display:flex; align-items:center; gap:8px">
+              <button data-quickfoodedit="${f.id}">Add</button>
+              <button class="link-btn" data-deletelibfood="${f.id}" style="color:var(--muted-dark); padding:6px">✕</button>
+            </span>
           </div>
         `).join('')}
       </div>` : ''}
@@ -1080,6 +1090,9 @@ function renderModal(){
         <div><label class="field-label">Carbs g</label><input type="number" id="f-carb" value="${baseCarb}"></div>
         <div><label class="field-label">Fat g</label><input type="number" id="f-fat" value="${baseFat}"></div>
       </div>
+      <label class="field-label">Number of servings</label>
+      <input type="number" step="0.5" min="0.25" id="f-servings" value="1">
+      <div class="subhead" id="f-total-preview" style="margin-top:8px; margin-bottom:0"></div>
       <input type="hidden" id="f-base-serving" value="${baseServing}">
       <input type="hidden" id="f-base-cal" value="${baseCal===''?0:baseCal}">
       <input type="hidden" id="f-base-pro" value="${basePro===''?0:basePro}">
@@ -1225,8 +1238,16 @@ function bindEvents(){
       STATE.modal = {type:'addFood', data:{
         mode:'quickadd',
         name: f.name, servingSize: f.servingSize, servingUnit: f.servingUnit,
-        calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, qty: 1
+        calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat
       }};
+      render();
+    };
+  });
+  document.querySelectorAll('[data-deletelibfood]').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      await removeFromLibrary(el.dataset.deletelibfood);
+      showToast('Removed from saved foods');
       render();
     };
   });
@@ -1270,8 +1291,19 @@ function bindEvents(){
     render();
   };
 
-  // add/edit food modal — "Amount" scales the nutrition fields live from the base values
+  // add/edit food modal — "Amount" scales per-serving nutrition; "Servings" multiplies the total
   const fServingInput = document.getElementById('f-serving');
+  const fServingsCountInput = document.getElementById('f-servings');
+  function updateTotalPreview(){
+    const cal = Number(document.getElementById('f-cal').value) || 0;
+    const pro = Number(document.getElementById('f-pro').value) || 0;
+    const carb = Number(document.getElementById('f-carb').value) || 0;
+    const fat = Number(document.getElementById('f-fat').value) || 0;
+    const servings = Number(fServingsCountInput.value) || 1;
+    const el = document.getElementById('f-total-preview');
+    if(!el) return;
+    el.textContent = `Total for ${servings} serving${servings!==1?'s':''}: ${Math.round(cal*servings)} kcal · ${Math.round(pro*servings*10)/10}p · ${Math.round(carb*servings*10)/10}c · ${Math.round(fat*servings*10)/10}f`;
+  }
   if(fServingInput) fServingInput.oninput = ()=>{
     const baseServing = Number(document.getElementById('f-base-serving').value) || 0;
     const baseCal = Number(document.getElementById('f-base-cal').value) || 0;
@@ -1279,22 +1311,38 @@ function bindEvents(){
     const baseCarb = Number(document.getElementById('f-base-carb').value) || 0;
     const baseFat = Number(document.getElementById('f-base-fat').value) || 0;
     const newServing = Number(fServingInput.value) || 0;
-    if(baseServing<=0) return;
-    const ratio = newServing/baseServing;
-    document.getElementById('f-cal').value = Math.round(baseCal*ratio);
-    document.getElementById('f-pro').value = Math.round(basePro*ratio*10)/10;
-    document.getElementById('f-carb').value = Math.round(baseCarb*ratio*10)/10;
-    document.getElementById('f-fat').value = Math.round(baseFat*ratio*10)/10;
+    if(baseServing>0){
+      const ratio = newServing/baseServing;
+      document.getElementById('f-cal').value = Math.round(baseCal*ratio);
+      document.getElementById('f-pro').value = Math.round(basePro*ratio*10)/10;
+      document.getElementById('f-carb').value = Math.round(baseCarb*ratio*10)/10;
+      document.getElementById('f-fat').value = Math.round(baseFat*ratio*10)/10;
+    }
+    updateTotalPreview();
   };
+  if(fServingsCountInput) fServingsCountInput.oninput = updateTotalPreview;
+  ['f-cal','f-pro','f-carb','f-fat'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', updateTotalPreview);
+  });
+  updateTotalPreview();
+
   function readFoodForm(){
+    const servings = Number(document.getElementById('f-servings').value) || 1;
+    const perServingCal = Number(document.getElementById('f-cal').value)||0;
+    const perServingPro = Number(document.getElementById('f-pro').value)||0;
+    const perServingCarb = Number(document.getElementById('f-carb').value)||0;
+    const perServingFat = Number(document.getElementById('f-fat').value)||0;
     return {
       name: document.getElementById('f-name').value.trim() || 'Food',
       servingSize: Number(document.getElementById('f-serving').value)||0,
       servingUnit: document.getElementById('f-servingunit').value,
-      calories: Number(document.getElementById('f-cal').value)||0,
-      protein: Number(document.getElementById('f-pro').value)||0,
-      carbs: Number(document.getElementById('f-carb').value)||0,
-      fat: Number(document.getElementById('f-fat').value)||0,
+      servings,
+      perServingCal, perServingPro, perServingCarb, perServingFat,
+      totalCal: perServingCal*servings,
+      totalPro: perServingPro*servings,
+      totalCarb: perServingCarb*servings,
+      totalFat: perServingFat*servings,
     };
   }
   const fSaveOnce = document.getElementById('f-save-once');
@@ -1302,8 +1350,8 @@ function bindEvents(){
     const f = readFoodForm();
     await addFoodEntry(STATE.foodDate, {
       id:uid(), name:f.name,
-      calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat,
-      servingSize:f.servingSize, servingUnit:f.servingUnit
+      calories:f.totalCal, protein:f.totalPro, carbs:f.totalCarb, fat:f.totalFat,
+      servingSize:f.servingSize*f.servings, servingUnit:f.servingUnit
     });
     STATE.modal=null;
     showToast('Logged '+f.name);
@@ -1314,12 +1362,12 @@ function bindEvents(){
     const f = readFoodForm();
     await addFoodEntry(STATE.foodDate, {
       id:uid(), name:f.name,
-      calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat,
-      servingSize:f.servingSize, servingUnit:f.servingUnit
+      calories:f.totalCal, protein:f.totalPro, carbs:f.totalCarb, fat:f.totalFat,
+      servingSize:f.servingSize*f.servings, servingUnit:f.servingUnit
     });
     await addToLibrary({
       name:f.name, servingSize:f.servingSize, servingUnit:f.servingUnit,
-      calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat
+      calories:f.perServingCal, protein:f.perServingPro, carbs:f.perServingCarb, fat:f.perServingFat
     });
     STATE.modal=null;
     showToast('Logged and saved '+f.name);
@@ -1330,8 +1378,8 @@ function bindEvents(){
     const f = readFoodForm();
     const entryId = document.getElementById('f-entryid').value;
     await editFoodEntry(STATE.foodDate, entryId, {
-      name:f.name, calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat,
-      servingSize:f.servingSize, servingUnit:f.servingUnit
+      name:f.name, calories:f.totalCal, protein:f.totalPro, carbs:f.totalCarb, fat:f.totalFat,
+      servingSize:f.servingSize*f.servings, servingUnit:f.servingUnit
     });
     STATE.modal=null;
     showToast('Updated '+f.name);
