@@ -873,8 +873,7 @@ function renderWeight(){
 function renderWorkouts(){
   const logs = [...STATE.workoutLog].sort((a,b)=>b.date.localeCompare(a.date));
   return `
-    <h2>Training</h2>
-    <div class="subhead">Log every session — as many as you like per day.</div>
+    <h2 style="margin-bottom:20px">Training</h2>
     <button class="btn accent" data-open="addWorkout">Log a session</button>
     <div class="divider"></div>
     <div class="card">
