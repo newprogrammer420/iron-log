@@ -5,22 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Iron Log</title>
+<title>Locked In</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
-    --ink:#17181A;
-    --paper:#F6F5F2;
-    --paper-dim:#ECEAE4;
-    --muted:#8A887F;
-    --muted-dark:#65635B;
-    --accent:#BD5B2C;
-    --card:#FFFFFF;
-    --line:#E7E3DA;
+    --ink:#F3F1EB;
+    --paper:#0F1012;
+    --paper-dim:#17181B;
+    --muted:#8F8C83;
+    --muted-dark:#C9C5BB;
+    --accent:#DD8149;
+    --card:#1D1E21;
+    --line:#2C2D30;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;background:var(--ink);}
+  html,body{margin:0;padding:0;height:100%;background:var(--paper);}
   body{
     font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     color:var(--ink);
@@ -63,10 +64,11 @@
   }
   .card{
     background:var(--card);
+    border:1px solid var(--line);
     border-radius:16px;
     padding:18px;
     margin-bottom:14px;
-    box-shadow:0 1px 2px rgba(23,24,26,0.04), 0 6px 16px rgba(23,24,26,0.045);
+    box-shadow:0 4px 14px rgba(0,0,0,0.22);
   }
   .card-title{
     font-size:13px;
@@ -267,6 +269,7 @@
     width:100%;
     text-align:left;
     background:var(--card);
+    border:1px solid var(--line);
     border-radius:18px;
     padding:18px;
     font-size:16px;
@@ -275,7 +278,7 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
-    box-shadow:0 1px 2px rgba(23,24,26,0.04), 0 6px 16px rgba(23,24,26,0.045);
+    box-shadow:0 4px 14px rgba(0,0,0,0.22);
   }
   .profile-pick-btn:active{opacity:0.8;}
   .segmented{
@@ -385,7 +388,7 @@ try{
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }catch(e){
   document.getElementById('app').innerHTML =
-    '<div style="padding:40px 20px;font-family:sans-serif;color:#1B1D21">'
+    '<div style="padding:40px 20px;font-family:sans-serif;color:#F3F1EB;background:#0F1012;min-height:100vh">'
     +'<h2>Couldn\'t start the app</h2><p>'+errText(e)+'</p>'
     +'<p style="color:#8A887F;font-size:13px">Try reloading the page. If this keeps happening, check that your connection is online.</p></div>';
   throw e;
@@ -495,6 +498,7 @@ let STATE = {
   foodLog: [],
   foodLib: [],
   weightRange: 30,
+  foodLibOpen: false,
   modal: null, // {type:'addWeight'|'addWorkout'|'addFood'|'foodConfirm'|'switchProfile', data:{}}
   toast: null,
   busy: false,
@@ -623,89 +627,41 @@ async function saveSettings(newSettings){
   await dbSaveSettings(STATE.activeProfile, STATE.settings);
 }
 
-/* ---------------- vision / AI helpers ---------------- */
-async function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const r = new FileReader();
-    r.onload = ()=>res(r.result.split(',')[1]);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-function extractText(data){
-  try{
-    return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-  }catch(e){ return ''; }
-}
-function cleanJson(text){
-  const cleaned = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if(start===-1||end===-1) throw new Error('no json');
-  return JSON.parse(cleaned.slice(start,end+1));
-}
-
-async function analyzeLabelPhoto(base64){
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:500,
-      messages:[{
-        role:'user',
-        content:[
-          {type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64}},
-          {type:'text', text:'This is a photo of a food nutrition facts label. Read it and respond with ONLY minified JSON, no other text, no code fences, in this exact shape: {"name":string or null,"servingSize":number or null,"servingUnit":string or null,"calories":number or null,"protein":number or null,"carbs":number or null,"fat":number or null}. Use grams for protein/carbs/fat. If a value is not visible on the label, use null for it.'}
-        ]
-      }]
-    })
-  });
-  const data = await resp.json();
-  const text = extractText(data);
-  return cleanJson(text);
-}
-
-async function readBarcodeDigits(base64){
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:100,
-      messages:[{
-        role:'user',
-        content:[
-          {type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64}},
-          {type:'text', text:'This photo shows a product barcode. Read the numeric UPC/EAN digits printed under or near the barcode lines. Respond with ONLY the digits, nothing else, no spaces. If no clear number is readable, respond with exactly: NONE'}
-        ]
-      }]
-    })
-  });
-  const data = await resp.json();
-  const text = extractText(data).trim();
-  if(!text || text.toUpperCase().includes('NONE')) return null;
-  const digits = text.replace(/[^0-9]/g,'');
-  return digits.length>=6 ? digits : null;
-}
-
+/* ---------------- barcode lookup ---------------- */
 async function lookupBarcode(code){
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:600,
-      messages:[{
-        role:'user',
-        content:'Search the web for the food product with barcode/UPC/EAN number '+code+'. Find its name and typical nutrition facts per single serving (calories, protein, carbs, fat, serving size). After searching, respond with ONLY minified JSON as your final line, no code fences: {"name":string or null,"servingSize":number or null,"servingUnit":string or null,"calories":number or null,"protein":number or null,"carbs":number or null,"fat":number or null,"found":true or false}'
-      }],
-      tools:[{type:'web_search_20250305', name:'web_search'}]
-    })
-  });
+  const resp = await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+'.json');
   const data = await resp.json();
-  const text = extractText(data);
-  return cleanJson(text);
+  if(!data || data.status !== 1 || !data.product) return {found:false};
+  const p = data.product;
+  const n = p.nutriments || {};
+  let servingSize = null, servingUnit = 'g';
+  if(p.serving_size){
+    const m = String(p.serving_size).match(/([\d.]+)\s*([a-zA-Z]+)?/);
+    if(m){ servingSize = parseFloat(m[1]); if(m[2]) servingUnit = m[2]; }
+  }
+  let calories, protein, carbs, fat;
+  if(n['energy-kcal_serving'] != null){
+    calories = n['energy-kcal_serving'];
+    protein = n['proteins_serving'];
+    carbs = n['carbohydrates_serving'];
+    fat = n['fat_serving'];
+  } else {
+    servingSize = 100; servingUnit = 'g';
+    calories = n['energy-kcal_100g'];
+    protein = n['proteins_100g'];
+    carbs = n['carbohydrates_100g'];
+    fat = n['fat_100g'];
+  }
+  return {
+    found:true,
+    name: p.product_name || p.generic_name || 'Scanned product',
+    servingSize: servingSize || 100,
+    servingUnit: servingUnit || 'g',
+    calories: calories!=null ? Math.round(calories) : null,
+    protein: protein!=null ? Math.round(protein) : null,
+    carbs: carbs!=null ? Math.round(carbs) : null,
+    fat: fat!=null ? Math.round(fat) : null,
+  };
 }
 
 /* ---------------- render: root ---------------- */
@@ -721,7 +677,7 @@ function render(){
   if(STATE.toast) html += `<div class="toast">${STATE.toast}</div>`;
   app.innerHTML = html;
   bindEvents();
-  if(STATE.view==='trends') drawWeightChart();
+  if(STATE.view==='weight') drawWeightChart();
 }
 
 function renderScreenBody(){
@@ -729,7 +685,6 @@ function renderScreenBody(){
   if(STATE.view==='weight') return renderWeight();
   if(STATE.view==='workouts') return renderWorkouts();
   if(STATE.view==='food') return renderFood();
-  if(STATE.view==='trends') return renderTrends();
   if(STATE.view==='settings') return renderSettings();
   return '';
 }
@@ -754,7 +709,7 @@ function avatarSVG(kind){
 function renderPick(){
   return `
   <div class="screen" style="display:flex;flex-direction:column;justify-content:center;min-height:80vh">
-    <div class="brand" style="text-align:center">Iron<span>Log</span></div>
+    <div class="brand" style="text-align:center">Locked <span>In</span></div>
     <div class="subhead" style="text-align:center">Who's logging?</div>
     <div class="grid2" style="margin-top:6px">
       ${PROFILES.map(p=>`
@@ -774,7 +729,6 @@ function renderTabbar(){
     {id:'weight', icon:'weight', label:'Weight'},
     {id:'workouts', icon:'train', label:'Train'},
     {id:'food', icon:'food', label:'Food'},
-    {id:'trends', icon:'trends', label:'Trends'},
     {id:'settings', icon:'settings', label:'More'},
   ];
   return `<nav class="tabbar">
@@ -803,7 +757,7 @@ function renderToday(){
   }
 
   return `
-    <div class="brand">Iron<span>Log</span></div>
+    <div class="brand">Locked <span>In</span></div>
     <div class="subhead">${STATE.activeProfile} · ${fmtDate(date)}</div>
 
     <div class="card">
@@ -837,11 +791,21 @@ function renderToday(){
 function renderWeight(){
   const s = STATE.settings;
   const logs = [...STATE.weightLog].sort((a,b)=>b.date.localeCompare(a.date));
+  const ranges = [7,30,90,0];
+  const rangeLabels = {7:'7D',30:'30D',90:'90D',0:'All'};
   return `
     <h2>Weight</h2>
     <div class="subhead">Log each morning for a clean trend.</div>
     <button class="btn accent" data-open="addWeight">Log today's weight</button>
-    <div class="divider"></div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Trend</div>
+      <div class="segmented">
+        ${ranges.map(r=>`<button data-range="${r}" class="${STATE.weightRange===r?'active':''}">${rangeLabels[r]}</button>`).join('')}
+      </div>
+      ${STATE.weightLog.length<2 ? '<div class="empty">Log a few more days to see a trend.</div>' : '<canvas id="weightChart" height="220"></canvas>'}
+    </div>
+
     <div class="card">
       <div class="card-title">History</div>
       ${logs.length===0 ? '<div class="empty">No entries yet.</div>' :
@@ -872,25 +836,31 @@ function renderFood(){
   const date = todayStr();
   const day = foodDayEntry(date);
   const items = day ? day.items : [];
+  const libOpen = STATE.foodLibOpen;
   return `
     <h2>Food</h2>
     <div class="subhead">${fmtDate(date)}</div>
 
-    <div class="grid3" style="margin-bottom:14px">
+    <div class="grid2" style="margin-bottom:14px">
       <button class="scan-btn" data-open="addFood">${svgIcon('plus')}Manual</button>
-      <button class="scan-btn" data-open="scanLabel">${svgIcon('camera')}Label photo</button>
       <button class="scan-btn" data-open="scanBarcode">${svgIcon('barcode')}Barcode</button>
     </div>
 
     ${STATE.foodLib.length>0 ? `
-    <div class="card">
-      <div class="card-title">Quick add from saved foods</div>
-      ${STATE.foodLib.slice(0,8).map(f=>`
-        <div class="food-lib-row">
-          <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
-          <button data-quickfood="${f.id}">Add</button>
-        </div>
-      `).join('')}
+    <div class="card" style="padding:0; overflow:hidden">
+      <button id="foodlib-toggle" style="width:100%; background:none; display:flex; justify-content:space-between; align-items:center; padding:18px; text-align:left">
+        <span class="card-title" style="margin-bottom:0">Quick add · saved foods (${STATE.foodLib.length})</span>
+        <span style="color:var(--muted); font-size:13px; transform:rotate(${libOpen?'180deg':'0deg'}); transition:transform .15s">▾</span>
+      </button>
+      ${libOpen ? `
+      <div style="padding:0 18px 18px 18px">
+        ${STATE.foodLib.slice(0,10).map(f=>`
+          <div class="food-lib-row">
+            <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
+            <button data-quickfood="${f.id}">Add</button>
+          </div>
+        `).join('')}
+      </div>` : ''}
     </div>` : ''}
 
     <div class="card">
@@ -905,22 +875,6 @@ function renderFood(){
             </span>
           </div>
         `).join('')}
-    </div>
-  `;
-}
-
-/* ---------------- trends tab ---------------- */
-function renderTrends(){
-  const ranges = [7,30,90,0];
-  const labels = {7:'7D',30:'30D',90:'90D',0:'All'};
-  return `
-    <h2>Trends</h2>
-    <div class="subhead">Weight over time</div>
-    <div class="segmented">
-      ${ranges.map(r=>`<button data-range="${r}" class="${STATE.weightRange===r?'active':''}">${labels[r]}</button>`).join('')}
-    </div>
-    <div class="card">
-      ${STATE.weightLog.length<2 ? '<div class="empty">Log a few more days to see a trend.</div>' : '<canvas id="weightChart" height="220"></canvas>'}
     </div>
   `;
 }
@@ -1044,15 +998,10 @@ function renderModal(){
       </div>
       ${d.sourceNote ? `<div class="subhead" style="margin-top:10px; margin-bottom:0">${d.sourceNote}</div>` : ''}
     `;
-  } else if(m.type==='scanLabel' || m.type==='scanBarcode'){
-    const isBarcode = m.type==='scanBarcode';
+  } else if(m.type==='scanBarcode'){
     body = `
-      <div class="subhead" style="margin-bottom:14px">
-        ${isBarcode ? 'Take a clear photo of the barcode, including the printed numbers underneath.'
-                     : 'Take a clear, well-lit photo of the nutrition facts label.'}
-      </div>
-      <input type="file" accept="image/*" capture="environment" id="scan-input" style="display:none">
-      <button class="btn accent" id="scan-trigger">${STATE.busy ? '<span class="spinner"></span>Reading…' : 'Open camera'}</button>
+      <div class="subhead" style="margin-bottom:14px">Point your camera at the barcode.</div>
+      <div id="qr-reader" style="width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:220px"></div>
       <div id="scan-status" class="subhead" style="margin-top:12px; margin-bottom:0"></div>
     `;
   }
@@ -1138,12 +1087,14 @@ function bindEvents(){
       render();
     };
   });
+  const libToggle = document.getElementById('foodlib-toggle');
+  if(libToggle) libToggle.onclick = ()=>{ STATE.foodLibOpen = !STATE.foodLibOpen; render(); };
 
   // modal close
   const closeX = document.getElementById('modal-close');
   const backdrop = document.getElementById('modal-backdrop');
-  if(closeX) closeX.onclick = ()=>{ STATE.modal=null; render(); };
-  if(backdrop) backdrop.onclick = (e)=>{ if(e.target===backdrop){ STATE.modal=null; render(); } };
+  if(closeX) closeX.onclick = ()=>{ stopScanner(); STATE.modal=null; render(); };
+  if(backdrop) backdrop.onclick = (e)=>{ if(e.target===backdrop){ stopScanner(); STATE.modal=null; render(); } };
 
   // add weight modal
   const mSaveWeight = document.getElementById('m-save-weight');
@@ -1215,53 +1166,61 @@ function bindEvents(){
     render();
   };
 
-  // scan (label / barcode)
-  const scanTrigger = document.getElementById('scan-trigger');
-  const scanInput = document.getElementById('scan-input');
-  if(scanTrigger && scanInput){
-    scanTrigger.onclick = ()=> scanInput.click();
-    scanInput.onchange = async ()=>{
-      const file = scanInput.files[0];
-      if(!file) return;
-      STATE.busy = true;
+  // live barcode scanner
+  if(STATE.modal && STATE.modal.type==='scanBarcode'){
+    startScanner();
+  }
+}
+
+let __qrScanner = null;
+function stopScanner(){
+  if(__qrScanner){
+    const s = __qrScanner;
+    __qrScanner = null;
+    s.stop().then(()=>s.clear()).catch(()=>{});
+  }
+}
+function startScanner(){
+  if(__qrScanner) return;
+  const readerEl = document.getElementById('qr-reader');
+  if(!readerEl || typeof Html5Qrcode === 'undefined') return;
+  const formats = [
+    Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.CODE_128
+  ];
+  const scanner = new Html5Qrcode('qr-reader', {formatsToSupport: formats, verbose:false});
+  __qrScanner = scanner;
+  scanner.start(
+    {facingMode:'environment'},
+    {fps:10, qrbox:{width:260, height:140}},
+    async (decodedText)=>{
+      stopScanner();
       const statusEl = document.getElementById('scan-status');
-      const isBarcode = STATE.modal.type==='scanBarcode';
+      if(statusEl) statusEl.textContent = 'Found code '+decodedText+' — looking it up…';
       try{
-        const b64 = await fileToBase64(file);
-        if(isBarcode){
-          if(statusEl) statusEl.textContent = 'Reading barcode…';
-          const code = await readBarcodeDigits(b64);
-          if(!code) throw new Error('Could not read a barcode number from that photo. Try again with better lighting, or enter the food manually.');
-          if(statusEl) statusEl.textContent = 'Found code '+code+' — searching for the product…';
-          const result = await lookupBarcode(code);
-          if(!result.found){
-            STATE.busy = false;
-            STATE.modal = {type:'addFood', data:{sourceNote:'Could not find that barcode online — enter details manually.'}};
-            render();
-            return;
-          }
-          STATE.busy = false;
-          STATE.modal = {type:'addFood', data:{...result, sourceNote:'Pulled from a web search on barcode '+code+' — double check before saving.'}};
-          render();
+        const result = await lookupBarcode(decodedText);
+        if(!result.found){
+          STATE.modal = {type:'addFood', data:{sourceNote:'No match for barcode '+decodedText+' in the product database — enter details manually.'}};
         } else {
-          if(statusEl) statusEl.textContent = 'Reading label…';
-          const result = await analyzeLabelPhoto(b64);
-          STATE.busy = false;
-          STATE.modal = {type:'addFood', data:{...result, sourceNote:'Read from your photo — double check before saving.'}};
-          render();
+          STATE.modal = {type:'addFood', data:{...result, sourceNote:'Pulled from Open Food Facts for barcode '+decodedText+' — double check before saving.'}};
         }
       }catch(err){
-        STATE.busy = false;
-        STATE.modal = {type:'addFood', data:{sourceNote: (err && err.message) || 'Could not read that photo — enter details manually.'}};
-        render();
+        STATE.modal = {type:'addFood', data:{sourceNote:'Lookup failed — enter details manually.'}};
       }
-    };
-  }
+      render();
+    },
+    ()=>{ /* ignore per-frame no-match noise */ }
+  ).catch(err=>{
+    const statusEl = document.getElementById('scan-status');
+    if(statusEl) statusEl.textContent = 'Could not access the camera: '+errText(err);
+    __qrScanner = null;
+  });
 }
 
 boot().catch(e=>{
   document.getElementById('app').innerHTML =
-    '<div style="padding:40px 20px;font-family:sans-serif;color:#1B1D21">'
+    '<div style="padding:40px 20px;font-family:sans-serif;color:#F3F1EB;background:#0F1012;min-height:100vh">'
     +'<h2>Something went wrong loading your data</h2><p>'+errText(e)+'</p>'
     +'<p style="color:#8A887F;font-size:13px">Try reloading the page.</p></div>';
 });
