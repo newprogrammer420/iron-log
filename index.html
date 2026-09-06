@@ -848,7 +848,17 @@ function renderWeight(){
       <div class="segmented">
         ${ranges.map(r=>`<button data-range="${r}" class="${STATE.weightRange===r?'active':''}">${rangeLabels[r]}</button>`).join('')}
       </div>
-      ${STATE.weightLog.length<1 ? '<div class="empty">Log your weight to see a trend.</div>' : '<canvas id="weightChart" height="220"></canvas>'}
+      ${STATE.weightLog.length<1 ? '<div class="empty">Log your weight to see a trend.</div>' : `
+        <canvas id="weightChart" height="220"></canvas>
+        <div style="display:flex; gap:16px; justify-content:center; margin-top:10px">
+          <span style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted)">
+            <span style="width:14px; height:2px; background:#4A6FA5; border-radius:1px"></span>Weight
+          </span>
+          <span style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted)">
+            <span style="width:14px; height:2px; background:#C9C5BB; border-radius:1px; background-image:linear-gradient(90deg, #C9C5BB 60%, transparent 60%); background-size:6px 2px"></span>7-day avg
+          </span>
+        </div>
+      `}
     </div>
 
     <div class="card">
@@ -995,7 +1005,7 @@ function drawWeightChart(){
     ]},
     options:{
       responsive:true,
-      plugins:{legend:{labels:{color:'#F3F1EB', font:{weight:'600', size:11}}}},
+      plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{color:'#8A887F', font:{size:10}}, grid:{display:false}},
         y:{ticks:{color:'#8A887F', font:{size:10}}, grid:{color:'#232427'}}
