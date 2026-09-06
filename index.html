@@ -1295,13 +1295,17 @@ function bindEvents(){
   const fServingInput = document.getElementById('f-serving');
   const fServingsCountInput = document.getElementById('f-servings');
   function updateTotalPreview(){
-    const cal = Number(document.getElementById('f-cal').value) || 0;
-    const pro = Number(document.getElementById('f-pro').value) || 0;
-    const carb = Number(document.getElementById('f-carb').value) || 0;
-    const fat = Number(document.getElementById('f-fat').value) || 0;
-    const servings = Number(fServingsCountInput.value) || 1;
+    const calEl = document.getElementById('f-cal');
+    const proEl = document.getElementById('f-pro');
+    const carbEl = document.getElementById('f-carb');
+    const fatEl = document.getElementById('f-fat');
     const el = document.getElementById('f-total-preview');
-    if(!el) return;
+    if(!calEl || !proEl || !carbEl || !fatEl || !fServingsCountInput || !el) return;
+    const cal = Number(calEl.value) || 0;
+    const pro = Number(proEl.value) || 0;
+    const carb = Number(carbEl.value) || 0;
+    const fat = Number(fatEl.value) || 0;
+    const servings = Number(fServingsCountInput.value) || 1;
     el.textContent = `Total for ${servings} serving${servings!==1?'s':''}: ${Math.round(cal*servings)} kcal · ${Math.round(pro*servings*10)/10}p · ${Math.round(carb*servings*10)/10}c · ${Math.round(fat*servings*10)/10}f`;
   }
   if(fServingInput) fServingInput.oninput = ()=>{
@@ -1325,7 +1329,7 @@ function bindEvents(){
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', updateTotalPreview);
   });
-  updateTotalPreview();
+  if(fServingInput && fServingsCountInput) updateTotalPreview();
 
   function readFoodForm(){
     const servings = Number(document.getElementById('f-servings').value) || 1;
