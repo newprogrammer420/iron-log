@@ -16,7 +16,7 @@
     --paper-dim:#17181B;
     --muted:#8F8C83;
     --muted-dark:#C9C5BB;
-    --accent:#DD8149;
+    --accent:#4A6FA5;
     --card:#1D1E21;
     --line:#2C2D30;
   }
@@ -200,7 +200,7 @@
     left:0; right:0;
     max-width:520px;
     margin:0 auto;
-    background:rgba(246,245,242,0.92);
+    background:rgba(15,16,18,0.86);
     backdrop-filter:blur(14px);
     -webkit-backdrop-filter:blur(14px);
     border-top:1px solid var(--line);
@@ -726,9 +726,9 @@ function renderPick(){
 function renderTabbar(){
   const tabs = [
     {id:'today', icon:'today', label:'Today'},
-    {id:'weight', icon:'weight', label:'Weight'},
-    {id:'workouts', icon:'train', label:'Train'},
     {id:'food', icon:'food', label:'Food'},
+    {id:'workouts', icon:'train', label:'Train'},
+    {id:'weight', icon:'weight', label:'Weight'},
     {id:'settings', icon:'settings', label:'More'},
   ];
   return `<nav class="tabbar">
@@ -900,7 +900,7 @@ function drawWeightChart(){
   window.__wchart = new Chart(canvas.getContext('2d'), {
     type:'line',
     data:{ labels, datasets:[
-      {label:'Weight', data:values, borderColor:'#BD5B2C', backgroundColor:'transparent', pointRadius:3, tension:0.25, borderWidth:2},
+      {label:'Weight', data:values, borderColor:'#4A6FA5', backgroundColor:'transparent', pointRadius:3, tension:0.25, borderWidth:2},
       {label:'7-day avg', data:trend, borderColor:'#65635B', backgroundColor:'transparent', pointRadius:0, borderWidth:2, borderDash:[5,4], tension:0.3}
     ]},
     options:{
