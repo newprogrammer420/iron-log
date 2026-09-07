@@ -514,6 +514,7 @@ let STATE = {
   weightRange: 30,
   foodLibOpen: false,
   foodDate: null,
+  macroInputMode: 'grams',
   modal: null, // {type:'addWeight'|'addWorkout'|'addFood'|'foodConfirm'|'switchProfile', data:{}}
   toast: null,
   busy: false,
@@ -1016,6 +1017,10 @@ function drawWeightChart(){
 /* ---------------- settings tab ---------------- */
 function renderSettings(){
   const s = STATE.settings;
+  const mode = STATE.macroInputMode || 'grams';
+  const pctProtein = s.calorieTarget>0 ? Math.round(s.proteinTarget*4/s.calorieTarget*100) : 0;
+  const pctCarb = s.calorieTarget>0 ? Math.round(s.carbTarget*4/s.calorieTarget*100) : 0;
+  const pctFat = s.calorieTarget>0 ? Math.round(s.fatTarget*9/s.calorieTarget*100) : 0;
   return `
     <h2>Settings</h2>
     <div class="subhead">${STATE.activeProfile}'s targets</div>
@@ -1027,11 +1032,28 @@ function renderSettings(){
       </div>
       <label class="field-label">Daily calorie target</label>
       <input type="number" id="set-cal" value="${s.calorieTarget}">
-      <div class="grid3" style="margin-top:12px">
+
+      <label class="field-label">Macro targets</label>
+      <div class="segmented">
+        <button data-macromode="grams" class="${mode==='grams'?'active':''}">Grams</button>
+        <button data-macromode="percent" class="${mode==='percent'?'active':''}">% of calories</button>
+      </div>
+
+      ${mode==='percent' ? `
+      <div class="grid3">
+        <div><label class="field-label">Protein %</label><input type="number" id="set-pro-pct" value="${pctProtein}"></div>
+        <div><label class="field-label">Carbs %</label><input type="number" id="set-carb-pct" value="${pctCarb}"></div>
+        <div><label class="field-label">Fat %</label><input type="number" id="set-fat-pct" value="${pctFat}"></div>
+      </div>
+      <div class="subhead" id="macro-pct-hint" style="margin-top:8px; margin-bottom:0"></div>
+      ` : `
+      <div class="grid3">
         <div><label class="field-label">Protein g</label><input type="number" id="set-pro" value="${s.proteinTarget}"></div>
         <div><label class="field-label">Carbs g</label><input type="number" id="set-carb" value="${s.carbTarget}"></div>
         <div><label class="field-label">Fat g</label><input type="number" id="set-fat" value="${s.fatTarget}"></div>
       </div>
+      `}
+
       <button class="btn accent" style="margin-top:16px" id="save-settings">Save targets</button>
     </div>
     <div class="card">
@@ -1182,15 +1204,47 @@ function bindEvents(){
   // settings
   const saveSet = document.getElementById('save-settings');
   if(saveSet) saveSet.onclick = async ()=>{
-    await saveSettings({
-      calorieTarget: Number(document.getElementById('set-cal').value)||0,
-      proteinTarget: Number(document.getElementById('set-pro').value)||0,
-      carbTarget: Number(document.getElementById('set-carb').value)||0,
-      fatTarget: Number(document.getElementById('set-fat').value)||0,
-    });
+    const cal = Number(document.getElementById('set-cal').value)||0;
+    let pro, carb, fat;
+    if(STATE.macroInputMode==='percent'){
+      const pPct = Number(document.getElementById('set-pro-pct').value)||0;
+      const cPct = Number(document.getElementById('set-carb-pct').value)||0;
+      const fPct = Number(document.getElementById('set-fat-pct').value)||0;
+      pro = Math.round((pPct/100*cal)/4);
+      carb = Math.round((cPct/100*cal)/4);
+      fat = Math.round((fPct/100*cal)/9);
+    } else {
+      pro = Number(document.getElementById('set-pro').value)||0;
+      carb = Number(document.getElementById('set-carb').value)||0;
+      fat = Number(document.getElementById('set-fat').value)||0;
+    }
+    await saveSettings({calorieTarget:cal, proteinTarget:pro, carbTarget:carb, fatTarget:fat});
     showToast('Targets saved');
     render();
   };
+  document.querySelectorAll('[data-macromode]').forEach(el=>{
+    el.onclick = ()=>{ STATE.macroInputMode = el.dataset.macromode; render(); };
+  });
+  function updateMacroPctHint(){
+    const hint = document.getElementById('macro-pct-hint');
+    if(!hint) return;
+    const cal = Number(document.getElementById('set-cal').value)||0;
+    const pPct = Number(document.getElementById('set-pro-pct').value)||0;
+    const cPct = Number(document.getElementById('set-carb-pct').value)||0;
+    const fPct = Number(document.getElementById('set-fat-pct').value)||0;
+    const proG = Math.round((pPct/100*cal)/4);
+    const carbG = Math.round((cPct/100*cal)/4);
+    const fatG = Math.round((fPct/100*cal)/9);
+    const total = pPct+cPct+fPct;
+    hint.textContent = `= ${proG}g protein · ${carbG}g carbs · ${fatG}g fat  (total ${total}%${total!==100?' — should add up to 100%':''})`;
+  }
+  if(STATE.macroInputMode==='percent'){
+    ['set-cal','set-pro-pct','set-carb-pct','set-fat-pct'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', updateMacroPctHint);
+    });
+    updateMacroPctHint();
+  }
   document.querySelectorAll('[data-unit]').forEach(el=>{
     el.onclick = async ()=>{ await saveSettings({weightUnit:el.dataset.unit}); render(); };
   });
