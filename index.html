@@ -225,6 +225,8 @@
   nav.tabbar svg{width:22px; height:22px;}
   .modal-backdrop{
     position:fixed; inset:0;
+    height:100vh;
+    height:100dvh;
     background:rgba(23,24,26,0.5);
     z-index:100;
     display:flex;
@@ -236,6 +238,7 @@
     background:var(--paper);
     width:100%;
     max-height:88vh;
+    max-height:88dvh;
     overflow-y:auto;
     border-radius:22px 22px 0 0;
     padding:22px 18px calc(env(safe-area-inset-bottom) + 20px) 18px;
@@ -1139,7 +1142,7 @@ function renderModal(){
         ${STATE.foodLib.length>0 ? `<input type="text" id="foodlib-search" placeholder="Search saved foods" style="margin-bottom:14px">` : ''}
       </div>
       ${STATE.foodLib.length===0 ? '<div class="empty">Nothing saved yet.</div>' : `
-        <div id="foodlib-rows" style="height:46vh; overflow-y:auto; -webkit-overflow-scrolling:touch">
+        <div id="foodlib-rows" style="height:46vh; height:46dvh; overflow-y:auto; -webkit-overflow-scrolling:touch">
           ${STATE.foodLib.map(f=>`
             <div class="food-lib-row" data-searchname="${f.name.toLowerCase().replace(/"/g,'&quot;')}">
               <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
