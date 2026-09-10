@@ -1140,7 +1140,7 @@ function renderModal(){
       <h2 style="margin-bottom:14px">Saved foods</h2>
       ${STATE.foodLib.length===0 ? '<div class="empty">Nothing saved yet.</div>' : `
         <input type="text" id="foodlib-search" placeholder="Search saved foods" style="margin-bottom:14px">
-        <div id="foodlib-rows">
+        <div id="foodlib-rows" style="height:46vh; overflow-y:auto; -webkit-overflow-scrolling:touch">
           ${STATE.foodLib.map(f=>`
             <div class="food-lib-row" data-searchname="${f.name.toLowerCase().replace(/"/g,'&quot;')}">
               <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
@@ -1150,8 +1150,8 @@ function renderModal(){
               </span>
             </div>
           `).join('')}
+          <div id="foodlib-noresults" class="empty" style="display:none">No matches.</div>
         </div>
-        <div id="foodlib-noresults" class="empty" style="display:none">No matches.</div>
       `}
     `;
   }
