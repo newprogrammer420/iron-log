@@ -893,7 +893,6 @@ function renderFood(){
   const items = day ? day.items : [];
   const totals = foodDayTotals(date);
   const s = STATE.settings;
-  const libOpen = STATE.foodLibOpen;
   const historyOpen = STATE.foodHistoryOpen;
   const historyDays = [...STATE.foodLog]
     .filter(d=>d.items.length>0)
@@ -921,24 +920,10 @@ function renderFood(){
     </div>
 
     ${STATE.foodLib.length>0 ? `
-    <div class="card" style="padding:0; overflow:hidden">
-      <button id="foodlib-toggle" style="width:100%; background:none; display:flex; justify-content:space-between; align-items:center; padding:18px; text-align:left">
-        <span class="card-title" style="margin-bottom:0">Quick add · saved foods (${STATE.foodLib.length})</span>
-        <span style="color:var(--muted); font-size:13px; transform:rotate(${libOpen?'180deg':'0deg'}); transition:transform .15s">▾</span>
-      </button>
-      ${libOpen ? `
-      <div style="padding:0 18px 18px 18px">
-        ${STATE.foodLib.slice(0,10).map(f=>`
-          <div class="food-lib-row">
-            <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
-            <span style="display:flex; align-items:center; gap:8px">
-              <button data-quickfoodedit="${f.id}">Add</button>
-              <button class="link-btn" data-deletelibfood="${f.id}" style="color:var(--muted-dark); padding:6px">✕</button>
-            </span>
-          </div>
-        `).join('')}
-      </div>` : ''}
-    </div>` : ''}
+    <button class="card" style="width:100%; display:flex; justify-content:space-between; align-items:center; text-align:left; background:var(--card)" data-open="foodLibraryList">
+      <span class="card-title" style="margin-bottom:0">Quick add · saved foods (${STATE.foodLib.length})</span>
+      <span style="color:var(--muted); font-size:16px">›</span>
+    </button>` : ''}
 
     <div class="card">
       <div class="card-title">Logged${isToday?' today':''}</div>
@@ -1031,7 +1016,7 @@ function renderSettings(){
         <button data-unit="lb" class="${s.weightUnit==='lb'?'active':''}">lb</button>
       </div>
       <label class="field-label">Daily calorie target</label>
-      <input type="number" id="set-cal" value="${s.calorieTarget}">
+      <input type="number" inputmode="decimal" id="set-cal" value="${s.calorieTarget}">
 
       <label class="field-label">Macro targets</label>
       <div class="segmented">
@@ -1041,16 +1026,16 @@ function renderSettings(){
 
       ${mode==='percent' ? `
       <div class="grid3">
-        <div><label class="field-label">Protein %</label><input type="number" id="set-pro-pct" value="${pctProtein}"></div>
-        <div><label class="field-label">Carbs %</label><input type="number" id="set-carb-pct" value="${pctCarb}"></div>
-        <div><label class="field-label">Fat %</label><input type="number" id="set-fat-pct" value="${pctFat}"></div>
+        <div><label class="field-label">Protein %</label><input type="number" inputmode="decimal" id="set-pro-pct" value="${pctProtein}"></div>
+        <div><label class="field-label">Carbs %</label><input type="number" inputmode="decimal" id="set-carb-pct" value="${pctCarb}"></div>
+        <div><label class="field-label">Fat %</label><input type="number" inputmode="decimal" id="set-fat-pct" value="${pctFat}"></div>
       </div>
       <div class="subhead" id="macro-pct-hint" style="margin-top:8px; margin-bottom:0"></div>
       ` : `
       <div class="grid3">
-        <div><label class="field-label">Protein g</label><input type="number" id="set-pro" value="${s.proteinTarget}"></div>
-        <div><label class="field-label">Carbs g</label><input type="number" id="set-carb" value="${s.carbTarget}"></div>
-        <div><label class="field-label">Fat g</label><input type="number" id="set-fat" value="${s.fatTarget}"></div>
+        <div><label class="field-label">Protein g</label><input type="number" inputmode="decimal" id="set-pro" value="${s.proteinTarget}"></div>
+        <div><label class="field-label">Carbs g</label><input type="number" inputmode="decimal" id="set-carb" value="${s.carbTarget}"></div>
+        <div><label class="field-label">Fat g</label><input type="number" inputmode="decimal" id="set-fat" value="${s.fatTarget}"></div>
       </div>
       `}
 
@@ -1078,7 +1063,7 @@ function renderModal(){
     const existing = weightForDate(date);
     body = `
       <label class="field-label">Weight (${STATE.settings.weightUnit})</label>
-      <input type="number" step="0.1" id="m-weight" value="${existing?existing.value:''}">
+      <input type="number" inputmode="decimal" step="0.1" id="m-weight" value="${existing?existing.value:''}">
       <button class="btn accent" style="margin-top:16px" id="m-save-weight">Save</button>
     `;
   } else if(m.type==='addWorkout'){
@@ -1110,19 +1095,19 @@ function renderModal(){
       <label class="field-label">Food name</label>
       <input type="text" id="f-name" value="${d.name||''}" placeholder="e.g. Chicken breast">
       <div class="grid2" style="margin-top:12px">
-        <div><label class="field-label">Amount</label><input type="number" id="f-serving" value="${baseServing}"></div>
+        <div><label class="field-label">Amount</label><input type="number" inputmode="decimal" id="f-serving" value="${baseServing}"></div>
         <div><label class="field-label">Unit</label><input type="text" id="f-servingunit" value="${d.servingUnit||'g'}"></div>
       </div>
       <div class="grid2" style="margin-top:12px">
-        <div><label class="field-label">Calories</label><input type="number" id="f-cal" value="${baseCal}"></div>
-        <div><label class="field-label">Protein g</label><input type="number" id="f-pro" value="${basePro}"></div>
+        <div><label class="field-label">Calories</label><input type="number" inputmode="decimal" id="f-cal" value="${baseCal}"></div>
+        <div><label class="field-label">Protein g</label><input type="number" inputmode="decimal" id="f-pro" value="${basePro}"></div>
       </div>
       <div class="grid2" style="margin-top:12px">
-        <div><label class="field-label">Carbs g</label><input type="number" id="f-carb" value="${baseCarb}"></div>
-        <div><label class="field-label">Fat g</label><input type="number" id="f-fat" value="${baseFat}"></div>
+        <div><label class="field-label">Carbs g</label><input type="number" inputmode="decimal" id="f-carb" value="${baseCarb}"></div>
+        <div><label class="field-label">Fat g</label><input type="number" inputmode="decimal" id="f-fat" value="${baseFat}"></div>
       </div>
       <label class="field-label">Number of servings</label>
-      <input type="number" step="0.5" min="0.25" id="f-servings" value="1">
+      <input type="number" inputmode="decimal" step="0.5" min="0.25" id="f-servings" value="1">
       <div class="subhead" id="f-total-preview" style="margin-top:8px; margin-bottom:0"></div>
       <input type="hidden" id="f-base-serving" value="${baseServing}">
       <input type="hidden" id="f-base-cal" value="${baseCal===''?0:baseCal}">
@@ -1149,6 +1134,25 @@ function renderModal(){
       <div class="subhead" style="margin-bottom:14px">Point your camera at the barcode.</div>
       <div id="qr-reader" style="width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:220px"></div>
       <div id="scan-status" class="subhead" style="margin-top:12px; margin-bottom:0"></div>
+    `;
+  } else if(m.type==='foodLibraryList'){
+    body = `
+      <h2 style="margin-bottom:14px">Saved foods</h2>
+      ${STATE.foodLib.length===0 ? '<div class="empty">Nothing saved yet.</div>' : `
+        <input type="text" id="foodlib-search" placeholder="Search saved foods" style="margin-bottom:14px">
+        <div id="foodlib-rows">
+          ${STATE.foodLib.map(f=>`
+            <div class="food-lib-row" data-searchname="${f.name.toLowerCase().replace(/"/g,'&quot;')}">
+              <div><div style="font-weight:600">${f.name}</div><div class="meta" style="color:var(--muted);font-size:12px">${f.calories} kcal / serving</div></div>
+              <span style="display:flex; align-items:center; gap:8px">
+                <button data-quickfoodedit="${f.id}">Add</button>
+                <button class="link-btn" data-deletelibfood="${f.id}" style="color:var(--muted-dark); padding:6px">✕</button>
+              </span>
+            </div>
+          `).join('')}
+        </div>
+        <div id="foodlib-noresults" class="empty" style="display:none">No matches.</div>
+      `}
     `;
   }
   return `
@@ -1314,8 +1318,19 @@ function bindEvents(){
       render();
     };
   });
-  const libToggle = document.getElementById('foodlib-toggle');
-  if(libToggle) libToggle.onclick = ()=>{ STATE.foodLibOpen = !STATE.foodLibOpen; render(); };
+  const libSearch = document.getElementById('foodlib-search');
+  if(libSearch) libSearch.oninput = ()=>{
+    const q = libSearch.value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#foodlib-rows .food-lib-row');
+    let anyVisible = false;
+    rows.forEach(row=>{
+      const match = row.dataset.searchname.includes(q);
+      row.style.display = match ? '' : 'none';
+      if(match) anyVisible = true;
+    });
+    const noResults = document.getElementById('foodlib-noresults');
+    if(noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+  };
 
   // modal close
   const closeX = document.getElementById('modal-close');
