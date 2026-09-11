@@ -100,6 +100,11 @@
     grid-template-columns:1fr 1fr 1fr;
     gap:10px;
   }
+  .grid4{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr 1fr;
+    gap:8px;
+  }
   input[type=number], input[type=text], input[type=date], select, textarea{
     width:100%;
     padding:12px 13px;
@@ -225,23 +230,23 @@
   nav.tabbar svg{width:22px; height:22px;}
   .modal-backdrop{
     position:fixed; inset:0;
-    height:100vh;
-    height:100dvh;
     background:rgba(23,24,26,0.5);
     z-index:100;
-    display:flex;
-    align-items:flex-end;
-    max-width:520px;
-    margin:0 auto;
   }
   .modal{
-    background:var(--paper);
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
     width:100%;
+    max-width:520px;
+    background:var(--paper);
     max-height:88vh;
     max-height:88dvh;
     overflow-y:auto;
     border-radius:22px 22px 0 0;
     padding:22px 18px calc(env(safe-area-inset-bottom) + 20px) 18px;
+    z-index:101;
   }
   .modal-handle{
     width:36px; height:4px; background:var(--line); border-radius:3px;
@@ -333,12 +338,12 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .scan-btn{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:8px; padding:20px 8px;
+    gap:7px; padding:16px 4px;
     background:var(--card); border:1px solid var(--line);
-    border-radius:16px; font-size:12.5px; font-weight:600; color:var(--muted-dark);
+    border-radius:16px; font-size:11px; font-weight:600; color:var(--muted-dark);
     box-shadow:0 1px 2px rgba(23,24,26,0.03);
   }
-  .scan-btn svg{width:22px; height:22px; color:var(--ink);}
+  .scan-btn svg{width:19px; height:19px; color:var(--ink);}
 </style>
 </head>
 <body>
@@ -357,7 +362,8 @@ function svgIcon(name){
     plus: '<path d="M12 5v14M5 12h14"/>',
     camera: '<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
     barcode: '<path d="M4 5v14M8 5v14M11 5v14M13 5v14M17 5v14M20 5v14"/>',
-    saved: '<path d="M6 4h12v16l-6-4-6 4z"/>'
+    saved: '<path d="M6 4h12v16l-6-4-6 4z"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name]||''}</svg>`;
 }
@@ -679,6 +685,75 @@ async function saveSettings(newSettings){
 }
 
 /* ---------------- barcode lookup ---------------- */
+/* ---------------- food name search (USDA + Open Food Facts) ---------------- */
+const USDA_API_KEY = 'qm4DWcUb1dAWOMBvsRDVnb0puRTCwDMg9Xk5FAMV'; // free key from fdc.nal.usda.gov/api-key-signup
+async function searchUSDA(query){
+  if(!USDA_API_KEY) return [];
+  try{
+    const resp = await fetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+encodeURIComponent(USDA_API_KEY)+'&query='+encodeURIComponent(query)+'&pageSize=10');
+    const data = await resp.json();
+    const foods = (data && data.foods) || [];
+    return foods.map(f=>{
+      const nutrients = f.foodNutrients || [];
+      const get = (name)=>{ const n = nutrients.find(x=>x.nutrientName===name); return n ? n.value : null; };
+      const cal = get('Energy');
+      if(cal==null) return null;
+      return {
+        name: f.description || 'USDA food',
+        brand: f.brandName || '',
+        source: 'USDA',
+        servingSize: 100, servingUnit: 'g',
+        calories: Math.round(cal),
+        protein: Math.round(get('Protein')||0),
+        carbs: Math.round(get('Carbohydrate, by difference')||0),
+        fat: Math.round(get('Total lipid (fat)')||0),
+      };
+    }).filter(Boolean);
+  }catch(e){ return []; }
+}
+async function searchOpenFoodFactsByName(query){
+  try{
+    const resp = await fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&page_size=15');
+    const data = await resp.json();
+    const products = (data && data.products) || [];
+    return products.map(p=>{
+      const n = p.nutriments || {};
+      let servingSize = null, servingUnit = 'g', calories, protein, carbs, fat;
+      if(n['energy-kcal_serving'] != null){
+        calories = n['energy-kcal_serving'];
+        protein = n['proteins_serving'];
+        carbs = n['carbohydrates_serving'];
+        fat = n['fat_serving'];
+        if(p.serving_size){
+          const m = String(p.serving_size).match(/([\d.]+)\s*([a-zA-Z]+)?/);
+          if(m){ servingSize = parseFloat(m[1]); if(m[2]) servingUnit = m[2]; }
+        }
+      } else {
+        calories = n['energy-kcal_100g'];
+        protein = n['proteins_100g'];
+        carbs = n['carbohydrates_100g'];
+        fat = n['fat_100g'];
+      }
+      if(calories==null) return null;
+      return {
+        name: p.product_name || p.generic_name || 'Unnamed product',
+        brand: p.brands || '',
+        source: 'Open Food Facts',
+        servingSize: servingSize || 100,
+        servingUnit: servingUnit || 'g',
+        calories: Math.round(calories),
+        protein: Math.round(protein||0),
+        carbs: Math.round(carbs||0),
+        fat: Math.round(fat||0),
+      };
+    }).filter(Boolean);
+  }catch(e){ return []; }
+}
+async function searchFoodByName(query){
+  const [usda, off] = await Promise.all([searchUSDA(query), searchOpenFoodFactsByName(query)]);
+  return [...usda, ...off].slice(0, 20);
+}
+
 async function lookupBarcode(code){
   const resp = await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+'.json');
   const data = await resp.json();
@@ -919,9 +994,10 @@ function renderFood(){
       ${renderMacroBar('Fat', totals.fat, s.fatTarget, 'g')}
     </div>
 
-    <div class="grid3" style="margin-bottom:14px">
+    <div class="grid4" style="margin-bottom:14px">
       <button class="scan-btn" data-open="addFood">${svgIcon('plus')}Manual</button>
       <button class="scan-btn" data-open="scanBarcode">${svgIcon('barcode')}Barcode</button>
+      <button class="scan-btn" data-open="searchFood">${svgIcon('search')}Search</button>
       <button class="scan-btn" data-open="foodLibraryList">${svgIcon('saved')}Saved</button>
     </div>
 
@@ -1135,10 +1211,23 @@ function renderModal(){
       <div id="qr-reader" style="width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:220px"></div>
       <div id="scan-status" class="subhead" style="margin-top:12px; margin-bottom:0"></div>
     `;
-  } else if(m.type==='foodLibraryList'){
+  } else if(m.type==='searchFood'){
     body = `
       <div style="display:flex; flex-direction:column; max-height:70dvh; max-height:70vh;">
         <div style="flex:none;">
+          <h2 style="margin-bottom:14px">Search foods</h2>
+          <div class="btn-row">
+            <input type="text" id="fs-query" placeholder="e.g. banana, chicken breast">
+            <button class="btn accent sm" id="fs-go">Search</button>
+          </div>
+          <div id="fs-status" class="subhead" style="margin-top:10px; margin-bottom:0"></div>
+        </div>
+        <div id="fs-results" style="flex:1; min-height:0; overflow-y:auto; margin-top:10px; -webkit-overflow-scrolling:touch"></div>
+      </div>
+    `;
+  } else if(m.type==='foodLibraryList'){
+    body = `
+      <div style="display:flex; flex-direction:column; max-height:70dvh; max-height:70vh;">        <div style="flex:none;">
           <h2 style="margin-bottom:14px">Saved foods</h2>
           ${STATE.foodLib.length>0 ? `<input type="text" id="foodlib-search" placeholder="Search saved foods" style="margin-bottom:14px">` : ''}
         </div>
@@ -1161,7 +1250,7 @@ function renderModal(){
   }
   return `
     <div class="modal-backdrop" id="modal-backdrop">
-      <div class="modal" style="position:relative">
+      <div class="modal">
         <div class="close-x" id="modal-close">✕</div>
         <div class="modal-handle"></div>
         ${body}
@@ -1172,6 +1261,16 @@ function renderModal(){
 
 /* ---------------- event binding ---------------- */
 function bindEvents(){
+  // guards a button against double-tap / double-submit while its action is still pending
+  function guardOnce(el, handler){
+    if(!el) return;
+    el.onclick = async (e)=>{
+      if(el.dataset.busy==='1') return;
+      el.dataset.busy = '1';
+      try{ await handler(e); }
+      finally{ el.dataset.busy = ''; }
+    };
+  }
   // profile pick
   document.querySelectorAll('[data-pick]').forEach(el=>{
     el.onclick = ()=> selectProfile(el.dataset.pick);
@@ -1187,7 +1286,7 @@ function bindEvents(){
     el.onclick = ()=>{ STATE.modal = {type:el.dataset.open}; render(); };
   });
   document.querySelectorAll('[data-quickworkout]').forEach(el=>{
-    el.onclick = async ()=>{
+    guardOnce(el, async ()=>{
       const cat = el.dataset.quickworkout;
       const existing = workoutsForDate(todayStr()).find(w=>w.category===cat);
       if(existing){
@@ -1198,10 +1297,10 @@ function bindEvents(){
         showToast('Logged '+cat);
       }
       render();
-    };
+    });
   });
   document.querySelectorAll('[data-removeworkout]').forEach(el=>{
-    el.onclick = async ()=>{ await removeWorkout(el.dataset.removeworkout); render(); };
+    guardOnce(el, async ()=>{ await removeWorkout(el.dataset.removeworkout); render(); });
   });
 
   // weight range
@@ -1257,19 +1356,19 @@ function bindEvents(){
     el.onclick = async ()=>{ await saveSettings({weightUnit:el.dataset.unit}); render(); };
   });
   const addCat = document.getElementById('add-cat');
-  if(addCat) addCat.onclick = async ()=>{
+  guardOnce(addCat, async ()=>{
     const val = document.getElementById('new-cat').value.trim();
     if(!val) return;
     const cats = [...STATE.settings.categories, val];
     await saveSettings({categories:cats});
     render();
-  };
+  });
   const switchBtn = document.getElementById('switch-profile-btn');
   if(switchBtn) switchBtn.onclick = switchProfile;
 
   // food list removal
   document.querySelectorAll('[data-removefood]').forEach(el=>{
-    el.onclick = async ()=>{ await removeFoodEntry(STATE.foodDate, el.dataset.removefood); render(); };
+    guardOnce(el, async ()=>{ await removeFoodEntry(STATE.foodDate, el.dataset.removefood); render(); });
   });
   // tap a logged item to edit it
   document.querySelectorAll('[data-editfood]').forEach(el=>{
@@ -1315,12 +1414,12 @@ function bindEvents(){
     };
   });
   document.querySelectorAll('[data-deletelibfood]').forEach(el=>{
-    el.onclick = async (e)=>{
+    guardOnce(el, async (e)=>{
       e.stopPropagation();
       await removeFromLibrary(el.dataset.deletelibfood);
       showToast('Removed from saved foods');
       render();
-    };
+    });
   });
   const libSearch = document.getElementById('foodlib-search');
   if(libSearch) libSearch.oninput = ()=>{
@@ -1344,14 +1443,14 @@ function bindEvents(){
 
   // add weight modal
   const mSaveWeight = document.getElementById('m-save-weight');
-  if(mSaveWeight) mSaveWeight.onclick = async ()=>{
+  guardOnce(mSaveWeight, async ()=>{
     const val = Number(document.getElementById('m-weight').value);
     if(!val) { showToast('Enter a weight'); return; }
     await saveWeight(todayStr(), val);
     STATE.modal=null;
     showToast('Weight logged');
     render();
-  };
+  });
 
   // add workout modal
   document.querySelectorAll('.modal-cat').forEach(el=>{
@@ -1362,7 +1461,7 @@ function bindEvents(){
     };
   });
   const mSaveWorkout = document.getElementById('m-save-workout');
-  if(mSaveWorkout) mSaveWorkout.onclick = async ()=>{
+  guardOnce(mSaveWorkout, async ()=>{
     const cat = document.getElementById('m-cat-selected').value;
     if(!cat){ showToast('Pick a category'); return; }
     const note = document.getElementById('m-workout-note').value;
@@ -1371,7 +1470,7 @@ function bindEvents(){
     STATE.modal=null;
     showToast('Session logged');
     render();
-  };
+  });
 
   // add/edit food modal — "Amount" scales per-serving nutrition; "Servings" multiplies the total
   const fServingInput = document.getElementById('f-serving');
@@ -1432,7 +1531,7 @@ function bindEvents(){
     };
   }
   const fSaveOnce = document.getElementById('f-save-once');
-  if(fSaveOnce) fSaveOnce.onclick = async ()=>{
+  guardOnce(fSaveOnce, async ()=>{
     const f = readFoodForm();
     await addFoodEntry(STATE.foodDate, {
       id:uid(), name:f.name,
@@ -1442,9 +1541,9 @@ function bindEvents(){
     STATE.modal=null;
     showToast('Logged '+f.name);
     render();
-  };
+  });
   const fSaveLib = document.getElementById('f-save-lib');
-  if(fSaveLib) fSaveLib.onclick = async ()=>{
+  guardOnce(fSaveLib, async ()=>{
     const f = readFoodForm();
     await addFoodEntry(STATE.foodDate, {
       id:uid(), name:f.name,
@@ -1458,9 +1557,9 @@ function bindEvents(){
     STATE.modal=null;
     showToast('Logged and saved '+f.name);
     render();
-  };
+  });
   const fSaveEdit = document.getElementById('f-save-edit');
-  if(fSaveEdit) fSaveEdit.onclick = async ()=>{
+  guardOnce(fSaveEdit, async ()=>{
     const f = readFoodForm();
     const entryId = document.getElementById('f-entryid').value;
     await editFoodEntry(STATE.foodDate, entryId, {
@@ -1470,15 +1569,65 @@ function bindEvents(){
     STATE.modal=null;
     showToast('Updated '+f.name);
     render();
-  };
+  });
   const fDelete = document.getElementById('f-delete');
-  if(fDelete) fDelete.onclick = async ()=>{
+  guardOnce(fDelete, async ()=>{
     const entryId = document.getElementById('f-entryid').value;
     await removeFoodEntry(STATE.foodDate, entryId);
     STATE.modal=null;
     showToast('Removed');
     render();
-  };
+  });
+
+  // food name search
+  const fsQuery = document.getElementById('fs-query');
+  const fsGo = document.getElementById('fs-go');
+  function renderSearchResults(results){
+    const el = document.getElementById('fs-results');
+    if(!el) return;
+    if(results.length===0){
+      el.innerHTML = '<div class="empty">No results. Try a different term or use Manual entry.</div>';
+      return;
+    }
+    el.innerHTML = results.map((f,i)=>`
+      <div class="food-lib-row">
+        <div>
+          <div style="font-weight:600">${f.name}</div>
+          <div class="meta" style="color:var(--muted);font-size:12px">${f.brand ? f.brand+' · ' : ''}${f.calories} kcal / ${f.servingSize}${f.servingUnit} · ${f.source}</div>
+        </div>
+        <button data-searchresult="${i}">Add</button>
+      </div>
+    `).join('');
+    document.querySelectorAll('[data-searchresult]').forEach(el=>{
+      guardOnce(el, async ()=>{
+        const f = results[Number(el.dataset.searchresult)];
+        STATE.modal = {type:'addFood', data:{
+          mode:'quickadd',
+          name:f.name, servingSize:f.servingSize, servingUnit:f.servingUnit,
+          calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat,
+          sourceNote:'From '+f.source+' — double check before saving.'
+        }};
+        render();
+      });
+    });
+  }
+  async function runFoodSearch(){
+    const q = fsQuery.value.trim();
+    if(!q) return;
+    const statusEl = document.getElementById('fs-status');
+    if(statusEl) statusEl.textContent = 'Searching…';
+    const resultsEl = document.getElementById('fs-results');
+    if(resultsEl) resultsEl.innerHTML = '';
+    try{
+      const results = await searchFoodByName(q);
+      if(statusEl) statusEl.textContent = results.length+' result'+(results.length!==1?'s':'');
+      renderSearchResults(results);
+    }catch(e){
+      if(statusEl) statusEl.textContent = 'Search failed — check your connection and try again.';
+    }
+  }
+  guardOnce(fsGo, runFoodSearch);
+  if(fsQuery) fsQuery.addEventListener('keydown', (e)=>{ if(e.key==='Enter') runFoodSearch(); });
 
   // live barcode scanner
   if(STATE.modal && STATE.modal.type==='scanBarcode'){
@@ -1505,10 +1654,13 @@ function startScanner(){
   ];
   const scanner = new Html5Qrcode('qr-reader', {formatsToSupport: formats, verbose:false});
   __qrScanner = scanner;
+  let handled = false;
   scanner.start(
     {facingMode:'environment'},
     {fps:10, qrbox:{width:260, height:140}},
     async (decodedText)=>{
+      if(handled) return;
+      handled = true;
       stopScanner();
       const statusEl = document.getElementById('scan-status');
       if(statusEl) statusEl.textContent = 'Found code '+decodedText+' — looking it up…';
