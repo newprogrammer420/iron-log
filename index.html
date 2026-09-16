@@ -591,74 +591,81 @@ const MOBILITY_ROUTINE = [
 ];
 
 function mobilityIllustration(name){
-  const S = 'stroke="var(--ink)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
-  const H = 'fill="var(--ink)"';
-  const wrap = (inner)=>`<svg viewBox="0 0 160 120" width="100%" height="140">${inner}</svg>`;
+  const L = 'stroke="var(--accent)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  const J = 'fill="var(--ink)"';
+  const wrap = (inner)=>`<svg viewBox="0 0 200 160" width="100%" height="150">
+    <line x1="10" y1="148" x2="190" y2="148" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>
+    ${inner}
+  </svg>`;
+  const dot = (x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r||6}" ${J}/>`;
+  const head = (x,y)=>dot(x,y,13);
   const figs = {
     '90/90 Hip Stretch': `
-      <circle cx="80" cy="24" r="10" ${H}/>
-      <path d="M80 34 L80 60" ${S}/>
-      <path d="M80 60 L45 68 L20 55" ${S}/>
-      <path d="M80 60 L112 72 L112 100" ${S}/>
-      <path d="M80 40 L55 55" ${S}/>
-      <path d="M80 40 L100 30" ${S}/>`,
+      ${head(100,42)}
+      <path d="M100 55 L100 108" ${L}/>
+      <path d="M100 108 L142 108 L142 82" ${L}/>
+      <path d="M100 108 L60 118 L28 118" ${L}/>
+      <path d="M100 68 L78 88" ${L}/>
+      <path d="M100 68 L122 88" ${L}/>
+      ${dot(100,108)}${dot(142,108)}${dot(60,118)}${dot(78,88,5)}${dot(122,88,5)}`,
     'Couch Stretch': `
-      <circle cx="100" cy="20" r="10" ${H}/>
-      <path d="M100 30 L95 55" ${S}/>
-      <path d="M95 55 L60 60" ${S}/>
-      <path d="M60 60 L55 100" ${S}/>
-      <path d="M95 55 L115 90 L115 108" ${S}/>
-      <path d="M115 90 L100 100" ${S}/>
-      <path d="M100 30 L75 20" ${S}/>
-      <path d="M100 30 L120 45" ${S}/>
-      <line x1="118" y1="45" x2="118" y2="110" ${S}/>`,
+      ${head(120,38)}
+      <path d="M120 51 L108 92" ${L}/>
+      <path d="M108 92 L70 100 L70 148" ${L}/>
+      <path d="M108 92 L128 130 L128 148" ${L}/>
+      <path d="M120 66 L95 82" ${L}/>
+      <line x1="150" y1="20" x2="150" y2="148" stroke="var(--line)" stroke-width="4"/>
+      <path d="M128 130 L150 105" ${L}/>
+      ${dot(108,92)}${dot(70,100)}${dot(128,130)}${dot(95,82,5)}`,
     'Forward Fold': `
-      <circle cx="80" cy="70" r="10" ${H}/>
-      <path d="M80 80 L78 45" ${S}/>
-      <path d="M78 45 L55 30" ${S}/>
-      <path d="M78 45 L60 60" ${S}/>
-      <path d="M78 45 L35 55" ${S}/>
-      <path d="M78 45 L100 20" ${S}/>
-      <line x1="78" y1="45" x2="78" y2="20" ${S}/>`,
+      ${head(95,95)}
+      <path d="M95 105 L100 60" ${L}/>
+      <path d="M100 60 L80 148" ${L}/>
+      <path d="M100 60 L128 148" ${L}/>
+      <path d="M100 60 L60 85" ${L}/>
+      <path d="M60 85 L85 125" ${L}/>
+      ${dot(100,60)}${dot(60,85,5)}`,
     'Knee-to-Wall Dorsiflexion': `
-      <line x1="130" y1="10" x2="130" y2="110" ${S}/>
-      <circle cx="60" cy="20" r="10" ${H}/>
-      <path d="M60 30 L58 60" ${S}/>
-      <path d="M58 60 L100 65 L118 65" ${S}/>
-      <path d="M58 60 L45 95 L45 108" ${S}/>
-      <path d="M60 40 L40 50" ${S}/>
-      <path d="M60 40 L80 30" ${S}/>`,
+      <line x1="165" y1="20" x2="165" y2="148" stroke="var(--line)" stroke-width="4"/>
+      ${head(140,40)}
+      <path d="M140 53 L138 100" ${L}/>
+      <path d="M138 100 L160 130 L160 148" ${L}/>
+      <path d="M138 100 L95 130 L65 148" ${L}/>
+      <path d="M140 66 L115 85" ${L}/>
+      ${dot(138,100)}${dot(160,130)}${dot(95,130)}${dot(115,85,5)}`,
     'Open Book Stretch': `
-      <path d="M20 70 L70 70" ${S}/>
-      <circle cx="15" cy="70" r="10" ${H}/>
-      <path d="M70 70 L60 90 L60 108" ${S}/>
-      <path d="M70 70 L60 50 L60 32" ${S}/>
-      <path d="M40 70 L40 40" ${S}/>
-      <path d="M50 70 L130 30" ${S}/>`,
+      ${head(48,55)}
+      <path d="M48 68 L58 105" ${L}/>
+      <path d="M58 105 L90 112 L118 122" ${L}/>
+      <path d="M58 105 L90 118 L112 138" ${L}/>
+      <path d="M52 80 L85 95" ${L}/>
+      <path d="M52 80 L150 45" ${L}/>
+      ${dot(58,105)}${dot(90,112,5)}${dot(90,118,5)}`,
     'Band Dislocates': `
-      <circle cx="80" cy="20" r="10" ${H}/>
-      <line x1="80" y1="30" x2="80" y2="75" ${S}/>
-      <line x1="80" y1="75" x2="62" y2="108" ${S}/>
-      <line x1="80" y1="75" x2="98" y2="108" ${S}/>
-      <path d="M80 40 L45 15" ${S}/>
-      <path d="M80 40 L115 15" ${S}/>
-      <line x1="45" y1="15" x2="115" y2="15" ${S}/>`,
+      ${head(100,35)}
+      <path d="M100 48 L100 100" ${L}/>
+      <path d="M100 100 L78 148" ${L}/>
+      <path d="M100 100 L122 148" ${L}/>
+      <path d="M100 62 L65 25" ${L}/>
+      <path d="M100 62 L135 25" ${L}/>
+      <line x1="65" y1="25" x2="135" y2="25" ${L}/>
+      ${dot(100,100)}`,
     'Cat-Cow': `
-      <circle cx="128" cy="45" r="10" ${H}/>
-      <path d="M118 50 Q75 30 35 55" ${S}/>
-      <line x1="35" y1="55" x2="30" y2="95" ${S}/>
-      <line x1="45" y1="58" x2="42" y2="95" ${S}/>
-      <line x1="112" y1="55" x2="118" y2="95" ${S}/>
-      <line x1="100" y1="60" x2="102" y2="95" ${S}/>`,
+      ${head(168,88)}
+      <path d="M158 95 Q110 65 60 100" ${L}/>
+      <path d="M60 100 L58 148" ${L}/>
+      <path d="M85 100 L84 148" ${L}/>
+      <path d="M150 100 L155 148" ${L}/>
+      <path d="M130 96 L128 148" ${L}/>
+      ${dot(60,100)}${dot(85,100)}${dot(150,100)}${dot(128,96)}`,
     "World's Greatest Stretch": `
-      <circle cx="115" cy="20" r="10" ${H}/>
-      <path d="M115 30 L90 55" ${S}/>
-      <path d="M90 55 L45 65" ${S}/>
-      <path d="M45 65 L20 60" ${S}/>
-      <path d="M45 65 L48 105" ${S}/>
-      <path d="M90 55 L100 100 L100 110" ${S}/>
-      <path d="M110 40 L140 15" ${S}/>
-      <path d="M110 40 L95 60" ${S}/>`,
+      ${head(128,38)}
+      <path d="M128 51 L118 95" ${L}/>
+      <path d="M118 95 L128 130 L128 148" ${L}/>
+      <path d="M118 95 L55 130 L35 148" ${L}/>
+      <path d="M122 65 L100 118" ${L}/>
+      <path d="M122 65 L165 22" ${L}/>
+      ${dot(118,95)}${dot(128,130)}${dot(55,130)}${dot(100,118,5)}`,
   };
   return wrap(figs[name] || '');
 }
@@ -1067,26 +1074,49 @@ function renderToday(){
       <button class="btn ghost sm" style="margin-top:10px" data-open="addWeight">${w ? 'Update' : 'Log today'}</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">Today's sessions</div>
-      ${s.categories.includes('Upper A') && s.categories.includes('Football') ? (()=>{
+    ${(()=>{
+      const hasProgram = s.categories.includes('Upper A') && s.categories.includes('Football');
+      if(hasProgram){
         const next = getNextWorkout();
-        const nextLabel = next.type==='rest' ? 'Rest' : next.session.key;
-        return `<div class="subhead" style="margin-bottom:10px">Next up: <span style="color:var(--ink); font-weight:600">${nextLabel}</span> <button data-nav="program" class="link-btn" style="padding:0 0 0 4px">view plan</button></div>`;
-      })() : ''}
-      <div class="chip-row">
-        ${s.categories.map(c=>`<button class="chip ${todaysWorkouts.some(x=>x.category===c) ? 'active':''}" data-quickworkout="${c}">${c}</button>`).join('')}
-      </div>
-      ${todaysWorkouts.length>0 ? `
-      <div style="margin-top:14px">
-        ${todaysWorkouts.map(x=>`
-          <div class="list-row">
-            <span style="font-weight:600">${x.category}</span>
-            <button class="link-btn" data-removeworkout="${x.id}" style="color:var(--muted-dark)">✕</button>
-          </div>
-        `).join('')}
-      </div>` : ''}
-    </div>
+        const nextLabel = next.type==='rest' ? 'Rest' : next.session.label;
+        const nextKey = next.type==='rest' ? 'Rest' : next.session.key;
+        return `
+        <div class="card">
+          <div class="card-title">Today</div>
+          <div style="font-weight:700; font-size:20px">${nextKey}</div>
+          ${next.type!=='rest' ? `<div class="meta" style="color:var(--muted); margin-top:2px">${nextLabel}</div>` : (next.note?`<div class="subhead" style="margin-top:4px; margin-bottom:0">${next.note}</div>`:'')}
+          ${todaysWorkouts.length>0 ? `
+          <div style="margin-top:14px">
+            ${todaysWorkouts.map(x=>`
+              <div class="list-row">
+                <span style="font-weight:600">${x.category}</span>
+                <button class="link-btn" data-removeworkout="${x.id}" style="color:var(--muted-dark)">✕</button>
+              </div>
+            `).join('')}
+          </div>` : `
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn accent sm" data-log-suggested="${nextKey}">Log this</button>
+            <button class="btn ghost sm" data-nav="program">View plan</button>
+          </div>`}
+        </div>`;
+      }
+      return `
+      <div class="card">
+        <div class="card-title">Today's sessions</div>
+        <div class="chip-row">
+          ${s.categories.map(c=>`<button class="chip ${todaysWorkouts.some(x=>x.category===c) ? 'active':''}" data-quickworkout="${c}">${c}</button>`).join('')}
+        </div>
+        ${todaysWorkouts.length>0 ? `
+        <div style="margin-top:14px">
+          ${todaysWorkouts.map(x=>`
+            <div class="list-row">
+              <span style="font-weight:600">${x.category}</span>
+              <button class="link-btn" data-removeworkout="${x.id}" style="color:var(--muted-dark)">✕</button>
+            </div>
+          `).join('')}
+        </div>` : ''}
+      </div>`;
+    })()}
 
     ${s.categories.includes('Upper A') && s.categories.includes('Football') ? `
     <div class="card">
@@ -1574,16 +1604,17 @@ function renderModal(){
       <button class="btn accent" style="margin-top:16px" id="m-save-weight">Save</button>
     `;
   } else if(m.type==='addWorkout'){
+    const presetCat = (m.data||{}).presetCategory || '';
     body = `
       <label class="field-label">Category</label>
       <div class="chip-row" id="m-cat-chips">
-        ${STATE.settings.categories.map(c=>`<button class="chip modal-cat" data-cat="${c}">${c}</button>`).join('')}
+        ${STATE.settings.categories.map(c=>`<button class="chip modal-cat ${c===presetCat?'active':''}" data-cat="${c}">${c}</button>`).join('')}
       </div>
       <label class="field-label">Date</label>
       <input type="date" id="m-workout-date" value="${todayStr()}" max="${todayStr()}">
       <label class="field-label">Note (optional)</label>
       <input type="text" id="m-workout-note" placeholder="e.g. heavy squats, felt strong">
-      <input type="hidden" id="m-cat-selected" value="">
+      <input type="hidden" id="m-cat-selected" value="${presetCat}">
       <button class="btn accent" style="margin-top:16px" id="m-save-workout">Save</button>
     `;
   } else if(m.type==='addFood'){
@@ -1679,6 +1710,9 @@ function bindEvents(){
   // today quick actions
   document.querySelectorAll('[data-open]').forEach(el=>{
     el.onclick = ()=>{ STATE.modal = {type:el.dataset.open}; render(); };
+  });
+  document.querySelectorAll('[data-log-suggested]').forEach(el=>{
+    el.onclick = ()=>{ STATE.modal = {type:'addWorkout', data:{presetCategory: el.dataset.logSuggested}}; render(); };
   });
   document.querySelectorAll('[data-quickworkout]').forEach(el=>{
     guardOnce(el, async ()=>{
