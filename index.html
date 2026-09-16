@@ -513,6 +513,77 @@ const PROFILES = [
   {name:'Sajjar', avatar:'girl'},
 ];
 
+const WEEKLY_PROGRAM = [
+  {day:'Monday', label:'Push/Pull (Upper Body)', exercises:[
+    {name:'Bench Press', detail:'4×10'},
+    {name:'Incline Dumbbell Press', detail:'3×10'},
+    {name:'Lat Pulldown', detail:'4×10'},
+    {name:'Barbell Row', detail:'3×10'},
+    {name:'Barbell Curl', detail:'3×10'},
+    {name:'Tricep Pushdown', detail:'3×10'},
+    {name:'Lateral Raise', detail:'3×15'},
+    {name:'Pallof Press', detail:'3×40s hold'},
+  ]},
+  {day:'Tuesday', label:'Legs', exercises:[
+    {name:'Squat', detail:'4×6'},
+    {name:'Romanian Deadlift', detail:'3×8'},
+    {name:'Leg Extension', detail:'3×12'},
+    {name:'Leg Curl', detail:'3×12'},
+    {name:'Calf Raise', detail:'4×15'},
+    {name:'Bulgarian Split Squat', detail:'3×8/leg'},
+    {name:'Single-Leg RDL', detail:'3×8/leg'},
+    {name:'Hip Adductor Machine', detail:'3×15'},
+    {name:'Hip Abductor Machine', detail:'3×15'},
+    {name:'Copenhagen Plank', detail:'3×15s/side'},
+    {name:'Nordic Hamstring Curl', detail:'3×6'},
+  ]},
+  {day:'Wednesday', label:'Cardio', exercises:[
+    {name:'Warm-up', detail:'5 min easy'},
+    {name:'Box Jump', detail:'4×5'},
+    {name:'Lateral Bound', detail:'3×6/side'},
+    {name:'10m Shuttle Runs', detail:'6 reps'},
+    {name:'20m Sprint Starts', detail:'6 reps, full recovery'},
+    {name:'Interval Conditioning', detail:'30s hard/90s easy ×8'},
+    {name:'Cooldown', detail:'5 min easy'},
+  ]},
+  {day:'Thursday', label:'Push/Pull (Upper Body, variation)', exercises:[
+    {name:'Overhead Press', detail:'4×10'},
+    {name:'Cable Chest Fly', detail:'3×12'},
+    {name:'Seated Cable Row', detail:'4×10'},
+    {name:'Pull-Up / Assisted Pull-Up', detail:'3×8'},
+    {name:'Preacher Curl', detail:'3×10'},
+    {name:'Overhead Tricep Extension', detail:'3×10'},
+    {name:'Lateral Raise', detail:'3×15'},
+    {name:'Pallof Press', detail:'3×40s hold'},
+    {name:'Hanging Leg Raise', detail:'3×10'},
+    {name:'Cable Crunch', detail:'3×15'},
+    {name:'Weighted Plank', detail:'3×40s hold'},
+    {name:'Russian Twist', detail:'3×15/side'},
+  ]},
+  {day:'Friday', label:'Shoulder/Arms', exercises:[
+    {name:'Front Raise', detail:'3×15'},
+    {name:'Rear Delt Raise', detail:'3×15'},
+    {name:'Incline Dumbbell Curl', detail:'3×10'},
+    {name:'Hammer Curl', detail:'3×10'},
+    {name:'Tricep Extension', detail:'3×10'},
+    {name:'Tricep Pushdown', detail:'3×12'},
+  ]},
+  {day:'Saturday', label:'Cardio (Football)', exercises:[
+    {name:'Football match, or 25 min easy jog/bike if no game', detail:''},
+  ]},
+  {day:'Sunday', label:'Rest', exercises:[]},
+];
+const MOBILITY_ROUTINE = [
+  {name:'90/90 Hip Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
+  {name:'Couch Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
+  {name:'Forward Fold', area:'Hamstrings', work:'1.5 min', rest:'—', sides:false, workSec:90, restSec:0},
+  {name:'Knee-to-Wall Dorsiflexion', area:'Ankles', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
+  {name:'Open Book Stretch', area:'Spine', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
+  {name:'Band Dislocates', area:'Shoulders', work:'1.5 min', rest:'—', sides:false, workSec:90, restSec:0},
+  {name:'Cat-Cow', area:'Full Body', work:'1 min', rest:'—', sides:false, workSec:60, restSec:0},
+  {name:"World's Greatest Stretch", area:'Full Body', work:'5 reps/side, ~2 min total', rest:'10s between sides', sides:true, workSec:60, restSec:10},
+];
+
 /* ---------------- global state ---------------- */
 let STATE = {
   view: 'loading', // loading, pick, today, weight, workouts, food, trends, settings
@@ -751,7 +822,16 @@ async function searchOpenFoodFactsByName(query){
 }
 async function searchFoodByName(query){
   const [usda, off] = await Promise.all([searchUSDA(query), searchOpenFoodFactsByName(query)]);
-  return [...usda, ...off].slice(0, 20);
+  const combined = [...usda, ...off];
+  const seen = new Set();
+  const deduped = [];
+  for(const f of combined){
+    const sig = (f.brand||'').toLowerCase().trim()+'|'+f.calories+'|'+f.protein+'|'+f.carbs+'|'+f.fat;
+    if(seen.has(sig)) continue;
+    seen.add(sig);
+    deduped.push(f);
+  }
+  return deduped.slice(0, 20);
 }
 
 async function lookupBarcode(code){
@@ -810,6 +890,8 @@ function renderScreenBody(){
   if(STATE.view==='today') return renderToday();
   if(STATE.view==='weight') return renderWeight();
   if(STATE.view==='workouts') return renderWorkouts();
+  if(STATE.view==='program') return renderProgramPage();
+  if(STATE.view==='mobilitySession') return renderMobilitySessionPage();
   if(STATE.view==='food') return renderFood();
   if(STATE.view==='foodSearch') return renderFoodSearchPage();
   if(STATE.view==='foodLibrary') return renderFoodLibraryPage();
@@ -957,12 +1039,181 @@ function renderWorkouts(){
   const logs = [...STATE.workoutLog].sort((a,b)=>b.date.localeCompare(a.date));
   return `
     <h2 style="margin-bottom:20px">Training</h2>
-    <button class="btn accent" data-open="addWorkout">Log a session</button>
-    <div class="divider"></div>
+    <div class="btn-row" style="margin-bottom:16px">
+      <button class="btn accent" data-open="addWorkout">Log a session</button>
+      <button class="btn ghost" data-nav="program">Weekly plan</button>
+    </div>
     <div class="card">
       <div class="card-title">History</div>
       ${logs.length===0 ? '<div class="empty">No sessions logged yet.</div>' :
         logs.map(w=>`<div class="list-row"><span>${fmtDate(w.date)}</span><span style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">${w.category}</span><button class="link-btn" data-removeworkout="${w.id}" style="color:var(--muted-dark)">✕</button></span></div>`).join('')}
+    </div>
+  `;
+}
+
+/* ---------------- weekly plan page ---------------- */
+/* ---------------- mobility guided session ---------------- */
+function buildMobilitySteps(){
+  const steps = [];
+  MOBILITY_ROUTINE.forEach(m=>{
+    if(m.sides){
+      steps.push({move:m, side:'Left side', duration:m.workSec, isRest:false});
+      if(m.restSec>0) steps.push({move:m, side:null, duration:m.restSec, isRest:true});
+      steps.push({move:m, side:'Right side', duration:m.workSec, isRest:false});
+    } else {
+      steps.push({move:m, side:null, duration:m.workSec, isRest:false});
+    }
+  });
+  return steps;
+}
+function formatTimer(sec){
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return m+':'+String(s).padStart(2,'0');
+}
+function stepLabel(step){
+  if(!step) return '';
+  if(step.isRest) return 'Switch sides';
+  return step.move.name + (step.side ? ' — '+step.side : '');
+}
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime+0.15);
+  }catch(e){}
+}
+let __mobilityInterval = null;
+function startMobilitySession(){
+  const steps = buildMobilitySteps();
+  STATE.mobility = {steps, stepIndex:0, timeLeft:steps[0].duration, paused:false, done:false};
+  STATE.view = 'mobilitySession';
+  render();
+  clearInterval(__mobilityInterval);
+  __mobilityInterval = setInterval(mobilityTick, 1000);
+}
+function mobilityTick(){
+  if(STATE.view!=='mobilitySession' || !STATE.mobility){
+    clearInterval(__mobilityInterval);
+    return;
+  }
+  const mob = STATE.mobility;
+  if(mob.paused || mob.done) return;
+  mob.timeLeft--;
+  if(mob.timeLeft<=0){
+    advanceMobilityStep();
+  } else {
+    updateMobilityTimerDOM();
+  }
+}
+function advanceMobilityStep(){
+  const mob = STATE.mobility;
+  if(!mob) return;
+  playBeep();
+  if(mob.stepIndex >= mob.steps.length-1){
+    mob.done = true;
+    clearInterval(__mobilityInterval);
+    render();
+    return;
+  }
+  mob.stepIndex++;
+  mob.timeLeft = mob.steps[mob.stepIndex].duration;
+  render();
+}
+function updateMobilityTimerDOM(){
+  const mob = STATE.mobility;
+  if(!mob) return;
+  const timerEl = document.getElementById('mob-timer');
+  if(timerEl) timerEl.textContent = formatTimer(mob.timeLeft);
+  const fillEl = document.getElementById('mob-progress-fill');
+  if(fillEl){
+    const step = mob.steps[mob.stepIndex];
+    const pct = Math.max(0, Math.min(100, (1 - mob.timeLeft/step.duration)*100));
+    fillEl.style.width = pct+'%';
+  }
+}
+function renderMobilitySessionPage(){
+  const mob = STATE.mobility;
+  if(!mob) return '';
+  if(mob.done){
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px">
+        <div style="font-size:44px">✓</div>
+        <h2 style="margin-bottom:0">Mobility done</h2>
+        <div class="subhead" style="margin-bottom:6px">Nice work — that's the full routine.</div>
+        <button class="btn accent" data-nav="program" style="width:auto; padding:14px 30px">Back to plan</button>
+      </div>
+    `;
+  }
+  const step = mob.steps[mob.stepIndex];
+  const next = mob.steps[mob.stepIndex+1];
+  return `
+    <div style="display:flex; flex-direction:column; min-height:76vh">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <button data-mobility-exit style="background:var(--paper-dim); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink)">✕</button>
+        <span class="meta">${mob.stepIndex+1} / ${mob.steps.length}</span>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:8px">
+        ${step.isRest ? `<div class="subhead" style="margin-bottom:0">Rest</div>` : `<div class="meta" style="color:var(--muted)">${step.move.area}</div>`}
+        <h2 style="font-size:24px; margin-bottom:0">${stepLabel(step)}</h2>
+        <div id="mob-timer" class="stat-num" style="font-size:60px; margin:12px 0">${formatTimer(mob.timeLeft)}</div>
+        <div class="bar-track" style="width:75%; height:6px">
+          <div id="mob-progress-fill" class="bar-fill" style="width:0%; background:var(--accent)"></div>
+        </div>
+        ${next ? `<div class="subhead" style="margin-top:18px; margin-bottom:0">Up next: ${stepLabel(next)}</div>` : ''}
+      </div>
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn ghost" data-mobility-prev ${mob.stepIndex===0?'disabled':''}>Back</button>
+        <button class="btn accent" data-mobility-pause>${mob.paused?'Resume':'Pause'}</button>
+        <button class="btn ghost" data-mobility-next>Skip</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderProgramPage(){
+  const todayName = new Date().toLocaleDateString(undefined,{weekday:'long'});
+  return `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+      <button data-nav="workouts" style="background:var(--paper-dim); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink); flex-shrink:0">‹</button>
+      <h2 style="margin-bottom:0">Weekly plan</h2>
+    </div>
+    ${WEEKLY_PROGRAM.map(d=>{
+      const isToday = d.day===todayName;
+      return `
+      <div class="card" style="${isToday?'border-color:var(--accent)':''}">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:${d.exercises.length?'10px':'0'}">
+          <div>
+            <div style="font-weight:700; font-size:15px">${d.day}${isToday?' <span style=\"color:var(--accent);font-size:11px;font-weight:700\">· TODAY</span>':''}</div>
+            <div class="meta" style="color:var(--muted)">${d.label}</div>
+          </div>
+        </div>
+        ${d.exercises.map(ex=>`
+          <div class="list-row" style="padding:7px 0">
+            <span>${ex.name}</span>
+            <span class="meta">${ex.detail}</span>
+          </div>
+        `).join('')}
+      </div>`;
+    }).join('')}
+    <div class="card">
+      <div class="card-title">Daily mobility · ~14 min total</div>
+      <div class="subhead" style="margin-bottom:6px">After any training day, or standalone on Sunday. Go straight from one move to the next — the only rest is a brief pause when switching sides.</div>
+      <button class="btn accent" data-mobility-start style="margin-bottom:14px">Start</button>
+      ${MOBILITY_ROUTINE.map(m=>`
+        <div class="list-row" style="flex-direction:column; align-items:flex-start; gap:2px; padding:9px 0">
+          <div style="display:flex; justify-content:space-between; width:100%">
+            <span style="font-weight:600">${m.name}</span>
+            <span class="meta">${m.area}</span>
+          </div>
+          <span class="meta" style="color:var(--muted)">${m.work}${m.rest!=='—' ? ' · rest '+m.rest : ''}</span>
+        </div>
+      `).join('')}
     </div>
   `;
 }
@@ -1635,6 +1886,33 @@ function bindEvents(){
   }
   guardOnce(fsGo, runFoodSearch);
   if(fsQuery) fsQuery.addEventListener('keydown', (e)=>{ if(e.key==='Enter') runFoodSearch(); });
+
+  // mobility guided session
+  const mobStart = document.querySelector('[data-mobility-start]');
+  if(mobStart) mobStart.onclick = startMobilitySession;
+  const mobExit = document.querySelector('[data-mobility-exit]');
+  if(mobExit) mobExit.onclick = ()=>{
+    clearInterval(__mobilityInterval);
+    STATE.mobility = null;
+    STATE.view = 'program';
+    render();
+  };
+  const mobPause = document.querySelector('[data-mobility-pause]');
+  if(mobPause) mobPause.onclick = ()=>{
+    if(STATE.mobility) STATE.mobility.paused = !STATE.mobility.paused;
+    render();
+  };
+  const mobNext = document.querySelector('[data-mobility-next]');
+  if(mobNext) mobNext.onclick = ()=>{ advanceMobilityStep(); };
+  const mobPrev = document.querySelector('[data-mobility-prev]');
+  if(mobPrev) mobPrev.onclick = ()=>{
+    const mob = STATE.mobility;
+    if(!mob || mob.stepIndex===0) return;
+    mob.stepIndex--;
+    mob.timeLeft = mob.steps[mob.stepIndex].duration;
+    mob.paused = false;
+    render();
+  };
 
   // live barcode scanner
   if(STATE.modal && STATE.modal.type==='scanBarcode'){
