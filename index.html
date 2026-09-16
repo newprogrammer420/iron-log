@@ -592,79 +592,66 @@ const MOBILITY_ROUTINE = [
 ];
 
 function mobilityIllustration(name){
-  const L = 'stroke="var(--accent)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"';
-  const J = 'fill="var(--ink)"';
+  const B = 'stroke="var(--ink)" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  const A = 'stroke="var(--accent)" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  const HEAD = 'fill="var(--ink)"';
   const wrap = (inner)=>`<svg viewBox="0 0 200 160" width="100%" height="150">
-    <line x1="10" y1="148" x2="190" y2="148" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>
+    <line x1="10" y1="150" x2="190" y2="150" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
     ${inner}
   </svg>`;
-  const dot = (x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r||6}" ${J}/>`;
-  const head = (x,y)=>dot(x,y,13);
   const figs = {
     '90/90 Hip Stretch': `
-      ${head(92,50)}
-      <path d="M96 63 L100 108" ${L}/>
-      <path d="M100 108 L145 103 L128 130" ${L}/>
-      <path d="M100 108 L55 122 L70 138" ${L}/>
-      <path d="M90 78 L122 118" ${L}/>
-      ${dot(100,108)}${dot(145,103)}${dot(55,122)}`,
+      <circle cx="92" cy="46" r="15" ${HEAD}/>
+      <path d="M96 60 L100 106" ${B}/>
+      <path d="M100 106 L142 102" ${A}/>
+      <path d="M100 106 L58 118" ${A}/>
+      <path d="M90 76 L120 114" ${B}/>`,
     'Couch Stretch': `
-      <line x1="155" y1="15" x2="155" y2="148" stroke="var(--line)" stroke-width="4"/>
-      ${head(95,32)}
-      <path d="M95 45 L108 88" ${L}/>
-      <path d="M108 88 L100 108 L95 148" ${L}/>
-      <path d="M108 88 L135 140" ${L}/>
-      <path d="M135 140 L150 70" ${L}/>
-      <path d="M100 60 L120 90" ${L}/>
-      ${dot(108,88)}${dot(100,108)}${dot(135,140)}`,
+      <line x1="158" y1="12" x2="158" y2="150" stroke="var(--line)" stroke-width="5"/>
+      <circle cx="95" cy="28" r="15" ${HEAD}/>
+      <path d="M95 42 L108 86" ${B}/>
+      <path d="M108 86 L97 148" ${B}/>
+      <path d="M108 86 L133 138" ${A}/>
+      <path d="M133 138 L150 68" ${A}/>
+      <path d="M100 58 L122 88" ${B}/>`,
     'Forward Fold': `
-      ${head(65,58)}
-      <path d="M68 70 L95 105" ${L}/>
-      <path d="M95 105 L85 148" ${L}/>
-      <path d="M95 105 L105 148" ${L}/>
-      <path d="M75 72 L60 130" ${L}/>
-      ${dot(95,105)}`,
+      <circle cx="63" cy="55" r="15" ${HEAD}/>
+      <path d="M68 68 L95 105" ${B}/>
+      <path d="M95 105 L92 148" ${B}/>
+      <path d="M75 70 L58 128" ${B}/>`,
     'Knee-to-Wall Dorsiflexion': `
-      <line x1="165" y1="15" x2="165" y2="148" stroke="var(--line)" stroke-width="4"/>
-      ${head(108,35)}
-      <path d="M105 48 L100 95" ${L}/>
-      <path d="M100 95 L122 100 L120 148" ${L}/>
-      <path d="M100 95 L60 130 L55 148" ${L}/>
-      <path d="M105 55 L160 55" ${L}/>
-      ${dot(100,95)}${dot(122,100)}${dot(60,130)}`,
+      <line x1="168" y1="12" x2="168" y2="150" stroke="var(--line)" stroke-width="5"/>
+      <circle cx="107" cy="32" r="15" ${HEAD}/>
+      <path d="M104 46 L100 94" ${B}/>
+      <path d="M100 94 L120 98 L118 148" ${A}/>
+      <path d="M100 94 L58 130" ${A}/>
+      <path d="M104 52 L158 52" ${B}/>`,
     'Open Book Stretch': `
-      ${head(48,55)}
-      <path d="M50 68 L55 108" ${L}/>
-      <path d="M55 108 L90 115 L118 122" ${L}/>
-      <path d="M55 108 L90 120 L112 138" ${L}/>
-      <path d="M52 80 L88 78" ${L}/>
-      <path d="M52 80 L150 30" ${L}/>
-      ${dot(55,108)}${dot(90,115,5)}${dot(90,120,5)}`,
+      <circle cx="46" cy="52" r="15" ${HEAD}/>
+      <path d="M48 66 L55 108" ${B}/>
+      <path d="M55 108 L112 122" ${B}/>
+      <path d="M52 78 L86 80" ${B}/>
+      <path d="M52 78 L150 30" ${A}/>`,
     'Band Dislocates': `
-      ${head(100,38)}
-      <path d="M100 51 L100 100" ${L}/>
-      <path d="M100 100 L88 148" ${L}/>
-      <path d="M100 100 L112 148" ${L}/>
-      <path d="M100 55 L70 20" ${L}/>
-      <path d="M100 55 L135 35" ${L}/>
-      <line x1="70" y1="20" x2="135" y2="35" ${L}/>
-      ${dot(100,100)}`,
+      <circle cx="100" cy="35" r="15" ${HEAD}/>
+      <path d="M100 49 L100 100" ${B}/>
+      <path d="M100 100 L100 148" ${B}/>
+      <path d="M100 54 L68 18" ${B}/>
+      <path d="M100 54 L132 34" ${B}/>
+      <line x1="68" y1="18" x2="132" y2="34" ${A}/>`,
     'Cat-Cow': `
-      ${head(160,90)}
-      <path d="M148 95 Q100 118 65 95" ${L}/>
-      <path d="M150 115 L150 148" ${L}/>
-      <path d="M132 100 L130 148" ${L}/>
-      <path d="M65 95 L58 148" ${L}/>
-      <path d="M80 100 L82 148" ${L}/>
-      ${dot(150,115)}${dot(65,95)}`,
+      <circle cx="163" cy="88" r="15" ${HEAD}/>
+      <path d="M150 96 Q100 122 62 96" ${B}/>
+      <path d="M150 112 L150 148" ${B}/>
+      <path d="M62 96 L58 148" ${B}/>
+      <path d="M20 70 Q35 78 20 88" ${A} stroke-width="6"/>`,
     "World's Greatest Stretch": `
-      ${head(110,30)}
-      <path d="M110 43 L115 85" ${L}/>
-      <path d="M115 85 L128 100 L128 148" ${L}/>
-      <path d="M115 85 L75 130 L35 148" ${L}/>
-      <path d="M112 45 L125 110" ${L}/>
-      <path d="M112 45 L155 10" ${L}/>
-      ${dot(115,85)}${dot(128,100)}${dot(75,130)}`,
+      <circle cx="112" cy="28" r="15" ${HEAD}/>
+      <path d="M112 42 L116 84" ${B}/>
+      <path d="M116 84 L128 148" ${B}/>
+      <path d="M116 84 L40 148" ${A}/>
+      <path d="M114 48 L128 110" ${A}/>
+      <path d="M114 48 L158 12" ${B}/>`,
   };
   return wrap(figs[name] || '');
 }
