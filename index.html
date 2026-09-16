@@ -513,8 +513,8 @@ const PROFILES = [
   {name:'Sajjar', avatar:'girl'},
 ];
 
-const WEEKLY_PROGRAM = [
-  {day:'Monday', label:'Push/Pull (Upper Body)', exercises:[
+const ROTATION = [
+  {key:'Upper A', label:'Push/Pull (Upper Body)', exercises:[
     {name:'Bench Press', detail:'4×10'},
     {name:'Incline Dumbbell Press', detail:'3×10'},
     {name:'Lat Pulldown', detail:'4×10'},
@@ -524,7 +524,7 @@ const WEEKLY_PROGRAM = [
     {name:'Lateral Raise', detail:'3×15'},
     {name:'Pallof Press', detail:'3×40s hold'},
   ]},
-  {day:'Tuesday', label:'Legs', exercises:[
+  {key:'Legs', label:'Legs', exercises:[
     {name:'Squat', detail:'4×6'},
     {name:'Romanian Deadlift', detail:'3×8'},
     {name:'Leg Extension', detail:'3×12'},
@@ -537,7 +537,7 @@ const WEEKLY_PROGRAM = [
     {name:'Copenhagen Plank', detail:'3×15s/side'},
     {name:'Nordic Hamstring Curl', detail:'3×6'},
   ]},
-  {day:'Wednesday', label:'Cardio', exercises:[
+  {key:'Cardio', label:'Cardio (Conditioning)', exercises:[
     {name:'Warm-up', detail:'5 min easy'},
     {name:'Box Jump', detail:'4×5'},
     {name:'Lateral Bound', detail:'3×6/side'},
@@ -546,7 +546,7 @@ const WEEKLY_PROGRAM = [
     {name:'Interval Conditioning', detail:'30s hard/90s easy ×8'},
     {name:'Cooldown', detail:'5 min easy'},
   ]},
-  {day:'Thursday', label:'Push/Pull (Upper Body, variation)', exercises:[
+  {key:'Upper B', label:'Push/Pull (Upper Body, variation)', exercises:[
     {name:'Overhead Press', detail:'4×10'},
     {name:'Cable Chest Fly', detail:'3×12'},
     {name:'Seated Cable Row', detail:'4×10'},
@@ -560,7 +560,7 @@ const WEEKLY_PROGRAM = [
     {name:'Weighted Plank', detail:'3×40s hold'},
     {name:'Russian Twist', detail:'3×15/side'},
   ]},
-  {day:'Friday', label:'Shoulder/Arms', exercises:[
+  {key:'Shoulder/Arms', label:'Shoulder/Arms', exercises:[
     {name:'Front Raise', detail:'3×15'},
     {name:'Rear Delt Raise', detail:'3×15'},
     {name:'Incline Dumbbell Curl', detail:'3×10'},
@@ -568,11 +568,10 @@ const WEEKLY_PROGRAM = [
     {name:'Tricep Extension', detail:'3×10'},
     {name:'Tricep Pushdown', detail:'3×12'},
   ]},
-  {day:'Saturday', label:'Cardio (Football)', exercises:[
-    {name:'Football match, or 25 min easy jog/bike if no game', detail:''},
-  ]},
-  {day:'Sunday', label:'Rest', exercises:[]},
 ];
+const FOOTBALL_INFO = {label:'Football', exercises:[
+  {name:'Football match, or 25 min easy jog/bike if no game', detail:''},
+]};
 const MOBILITY_ROUTINE = [
   {name:'90/90 Hip Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
   {name:'Couch Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
@@ -694,6 +693,21 @@ function foodDayTotals(date){
 }
 function workoutsForDate(date){
   return STATE.workoutLog.filter(w=>w.date===date);
+}
+function getNextWorkout(){
+  const logs = [...STATE.workoutLog].sort((a,b)=>a.date.localeCompare(b.date));
+  let lastRotationIndex = null;
+  logs.forEach(w=>{
+    const idx = ROTATION.findIndex(r=>r.key===w.category);
+    if(idx>-1) lastRotationIndex = idx;
+  });
+  const nextIndex = lastRotationIndex===null ? 0 : (lastRotationIndex+1) % ROTATION.length;
+  const yesterday = addDays(todayStr(), -1);
+  const footballYesterday = logs.some(w=>w.date===yesterday && w.category==='Football');
+  if(footballYesterday){
+    return {type:'rest', label:'Rest', note:'Day after football — full rest.'};
+  }
+  return {type:'rotation', index:nextIndex, session:ROTATION[nextIndex]};
 }
 function weightForDate(date){
   return STATE.weightLog.find(w=>w.date===date);
@@ -972,6 +986,11 @@ function renderToday(){
 
     <div class="card">
       <div class="card-title">Today's sessions</div>
+      ${s.categories.includes('Upper A') && s.categories.includes('Football') ? (()=>{
+        const next = getNextWorkout();
+        const nextLabel = next.type==='rest' ? 'Rest' : next.session.key;
+        return `<div class="subhead" style="margin-bottom:10px">Next up: <span style="color:var(--ink); font-weight:600">${nextLabel}</span> <button data-nav="program" class="link-btn" style="padding:0 0 0 4px">view plan</button></div>`;
+      })() : ''}
       <div class="chip-row">
         ${s.categories.map(c=>`<button class="chip ${todaysWorkouts.some(x=>x.category===c) ? 'active':''}" data-quickworkout="${c}">${c}</button>`).join('')}
       </div>
@@ -1037,11 +1056,12 @@ function renderWeight(){
 /* ---------------- workouts tab ---------------- */
 function renderWorkouts(){
   const logs = [...STATE.workoutLog].sort((a,b)=>b.date.localeCompare(a.date));
+  const hasProgram = STATE.settings.categories.includes('Upper A') && STATE.settings.categories.includes('Football');
   return `
     <h2 style="margin-bottom:20px">Training</h2>
     <div class="btn-row" style="margin-bottom:16px">
       <button class="btn accent" data-open="addWorkout">Log a session</button>
-      <button class="btn ghost" data-nav="program">Weekly plan</button>
+      ${hasProgram ? `<button class="btn ghost" data-nav="program">Weekly plan</button>` : ''}
     </div>
     <div class="card">
       <div class="card-title">History</div>
@@ -1177,23 +1197,39 @@ function renderMobilitySessionPage(){
 }
 
 function renderProgramPage(){
-  const todayName = new Date().toLocaleDateString(undefined,{weekday:'long'});
+  const next = getNextWorkout();
   return `
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
       <button data-nav="workouts" style="background:var(--paper-dim); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink); flex-shrink:0">‹</button>
-      <h2 style="margin-bottom:0">Weekly plan</h2>
+      <h2 style="margin-bottom:0">Your rotation</h2>
     </div>
-    ${WEEKLY_PROGRAM.map(d=>{
-      const isToday = d.day===todayName;
+
+    <div class="card" style="border-color:var(--accent)">
+      <div class="card-title">Next up</div>
+      <div style="font-weight:700; font-size:18px">${next.type==='rest' ? 'Rest' : next.session.label}</div>
+      ${next.note ? `<div class="subhead" style="margin-top:4px; margin-bottom:0">${next.note}</div>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="card-title">How this works</div>
+      <div class="subhead" style="margin-bottom:0">
+        No fixed days — it's a rolling order. Football replaces whatever's next (that session isn't lost),
+        the day right after football is always full rest, and the day after that you resume exactly
+        where you left off.
+      </div>
+    </div>
+
+    ${ROTATION.map((r,i)=>{
+      const isNext = next.type==='rotation' && next.index===i;
       return `
-      <div class="card" style="${isToday?'border-color:var(--accent)':''}">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:${d.exercises.length?'10px':'0'}">
+      <div class="card" style="${isNext?'border-color:var(--accent)':''}">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:${r.exercises.length?'10px':'0'}">
           <div>
-            <div style="font-weight:700; font-size:15px">${d.day}${isToday?' <span style=\"color:var(--accent);font-size:11px;font-weight:700\">· TODAY</span>':''}</div>
-            <div class="meta" style="color:var(--muted)">${d.label}</div>
+            <div style="font-weight:700; font-size:15px">${r.key}${isNext?' <span style=\"color:var(--accent);font-size:11px;font-weight:700\">· NEXT UP</span>':''}</div>
+            <div class="meta" style="color:var(--muted)">${r.label}</div>
           </div>
         </div>
-        ${d.exercises.map(ex=>`
+        ${r.exercises.map(ex=>`
           <div class="list-row" style="padding:7px 0">
             <span>${ex.name}</span>
             <span class="meta">${ex.detail}</span>
@@ -1201,9 +1237,21 @@ function renderProgramPage(){
         `).join('')}
       </div>`;
     }).join('')}
+
+    <div class="card">
+      <div style="font-weight:700; font-size:15px">Football</div>
+      <div class="meta" style="color:var(--muted); margin-bottom:10px">Whenever it lands — replaces the next session in line</div>
+      ${FOOTBALL_INFO.exercises.map(ex=>`
+        <div class="list-row" style="padding:7px 0">
+          <span>${ex.name}</span>
+          <span class="meta">${ex.detail}</span>
+        </div>
+      `).join('')}
+    </div>
+
     <div class="card">
       <div class="card-title">Daily mobility · ~14 min total</div>
-      <div class="subhead" style="margin-bottom:6px">After any training day, or standalone on Sunday. Go straight from one move to the next — the only rest is a brief pause when switching sides.</div>
+      <div class="subhead" style="margin-bottom:6px">After any training day, or standalone on a rest day. Go straight from one move to the next — the only rest is a brief pause when switching sides.</div>
       <button class="btn accent" data-mobility-start style="margin-bottom:14px">Start</button>
       ${MOBILITY_ROUTINE.map(m=>`
         <div class="list-row" style="flex-direction:column; align-items:flex-start; gap:2px; padding:9px 0">
