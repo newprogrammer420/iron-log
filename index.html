@@ -455,6 +455,13 @@ async function dbInsertWorkout(name, date, category, note){
 async function dbDeleteWorkout(id){
   await supabaseClient.from('workout_logs').delete().eq('id', id);
 }
+async function dbFetchMobilityCompletion(name, date){
+  const {data} = await supabaseClient.from('mobility_completions').select('id').eq('profile_name', name).eq('date', date).maybeSingle();
+  return !!data;
+}
+async function dbMarkMobilityComplete(name, date){
+  await supabaseClient.from('mobility_completions').upsert({profile_name:name, date}, {onConflict:'profile_name,date'});
+}
 async function dbFetchFoodLog(name){
   const {data, error} = await supabaseClient.from('food_items').select('*').eq('profile_name', name).order('date');
   if(error) return [];
@@ -514,7 +521,7 @@ const PROFILES = [
 ];
 
 const ROTATION = [
-  {key:'Upper A', label:'Push/Pull (Upper Body)', exercises:[
+  {key:'Upper A', label:'Upper Body', exercises:[
     {name:'Bench Press', detail:'4×10'},
     {name:'Incline Dumbbell Press', detail:'3×10'},
     {name:'Lat Pulldown', detail:'4×10'},
@@ -546,7 +553,7 @@ const ROTATION = [
     {name:'Interval Conditioning', detail:'30s hard/90s easy ×8'},
     {name:'Cooldown', detail:'5 min easy'},
   ]},
-  {key:'Upper B', label:'Push/Pull (Upper Body, variation)', exercises:[
+  {key:'Upper B', label:'Upper Body (variation)', exercises:[
     {name:'Overhead Press', detail:'4×10'},
     {name:'Cable Chest Fly', detail:'3×12'},
     {name:'Seated Cable Row', detail:'4×10'},
@@ -583,6 +590,79 @@ const MOBILITY_ROUTINE = [
   {name:"World's Greatest Stretch", area:'Full Body', work:'5 reps/side, ~2 min total', rest:'10s between sides', sides:true, workSec:60, restSec:10},
 ];
 
+function mobilityIllustration(name){
+  const S = 'stroke="var(--ink)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  const H = 'fill="var(--ink)"';
+  const wrap = (inner)=>`<svg viewBox="0 0 160 120" width="100%" height="140">${inner}</svg>`;
+  const figs = {
+    '90/90 Hip Stretch': `
+      <circle cx="80" cy="24" r="10" ${H}/>
+      <path d="M80 34 L80 60" ${S}/>
+      <path d="M80 60 L45 68 L20 55" ${S}/>
+      <path d="M80 60 L112 72 L112 100" ${S}/>
+      <path d="M80 40 L55 55" ${S}/>
+      <path d="M80 40 L100 30" ${S}/>`,
+    'Couch Stretch': `
+      <circle cx="100" cy="20" r="10" ${H}/>
+      <path d="M100 30 L95 55" ${S}/>
+      <path d="M95 55 L60 60" ${S}/>
+      <path d="M60 60 L55 100" ${S}/>
+      <path d="M95 55 L115 90 L115 108" ${S}/>
+      <path d="M115 90 L100 100" ${S}/>
+      <path d="M100 30 L75 20" ${S}/>
+      <path d="M100 30 L120 45" ${S}/>
+      <line x1="118" y1="45" x2="118" y2="110" ${S}/>`,
+    'Forward Fold': `
+      <circle cx="80" cy="70" r="10" ${H}/>
+      <path d="M80 80 L78 45" ${S}/>
+      <path d="M78 45 L55 30" ${S}/>
+      <path d="M78 45 L60 60" ${S}/>
+      <path d="M78 45 L35 55" ${S}/>
+      <path d="M78 45 L100 20" ${S}/>
+      <line x1="78" y1="45" x2="78" y2="20" ${S}/>`,
+    'Knee-to-Wall Dorsiflexion': `
+      <line x1="130" y1="10" x2="130" y2="110" ${S}/>
+      <circle cx="60" cy="20" r="10" ${H}/>
+      <path d="M60 30 L58 60" ${S}/>
+      <path d="M58 60 L100 65 L118 65" ${S}/>
+      <path d="M58 60 L45 95 L45 108" ${S}/>
+      <path d="M60 40 L40 50" ${S}/>
+      <path d="M60 40 L80 30" ${S}/>`,
+    'Open Book Stretch': `
+      <path d="M20 70 L70 70" ${S}/>
+      <circle cx="15" cy="70" r="10" ${H}/>
+      <path d="M70 70 L60 90 L60 108" ${S}/>
+      <path d="M70 70 L60 50 L60 32" ${S}/>
+      <path d="M40 70 L40 40" ${S}/>
+      <path d="M50 70 L130 30" ${S}/>`,
+    'Band Dislocates': `
+      <circle cx="80" cy="20" r="10" ${H}/>
+      <line x1="80" y1="30" x2="80" y2="75" ${S}/>
+      <line x1="80" y1="75" x2="62" y2="108" ${S}/>
+      <line x1="80" y1="75" x2="98" y2="108" ${S}/>
+      <path d="M80 40 L45 15" ${S}/>
+      <path d="M80 40 L115 15" ${S}/>
+      <line x1="45" y1="15" x2="115" y2="15" ${S}/>`,
+    'Cat-Cow': `
+      <circle cx="128" cy="45" r="10" ${H}/>
+      <path d="M118 50 Q75 30 35 55" ${S}/>
+      <line x1="35" y1="55" x2="30" y2="95" ${S}/>
+      <line x1="45" y1="58" x2="42" y2="95" ${S}/>
+      <line x1="112" y1="55" x2="118" y2="95" ${S}/>
+      <line x1="100" y1="60" x2="102" y2="95" ${S}/>`,
+    "World's Greatest Stretch": `
+      <circle cx="115" cy="20" r="10" ${H}/>
+      <path d="M115 30 L90 55" ${S}/>
+      <path d="M90 55 L45 65" ${S}/>
+      <path d="M45 65 L20 60" ${S}/>
+      <path d="M45 65 L48 105" ${S}/>
+      <path d="M90 55 L100 100 L100 110" ${S}/>
+      <path d="M110 40 L140 15" ${S}/>
+      <path d="M110 40 L95 60" ${S}/>`,
+  };
+  return wrap(figs[name] || '');
+}
+
 /* ---------------- global state ---------------- */
 let STATE = {
   view: 'loading', // loading, pick, today, weight, workouts, food, trends, settings
@@ -596,6 +676,7 @@ let STATE = {
   foodLibOpen: false,
   foodDate: null,
   macroInputMode: 'grams',
+  mobilityDoneToday: false,
   modal: null, // {type:'addWeight'|'addWorkout'|'addFood'|'foodConfirm'|'switchProfile', data:{}}
   toast: null,
   busy: false,
@@ -654,12 +735,13 @@ async function selectProfile(name){
   STATE.activeProfile = name;
   STATE.view = 'loading';
   render();
-  const [settings, weightLog, workoutLog, foodLog, foodLib] = await Promise.all([
+  const [settings, weightLog, workoutLog, foodLog, foodLib, mobilityDone] = await Promise.all([
     dbFetchSettings(name),
     dbFetchWeightLog(name),
     dbFetchWorkoutLog(name),
     dbFetchFoodLog(name),
     dbFetchFoodLib(name),
+    dbFetchMobilityCompletion(name, todayStr()),
   ]);
   STATE.settings = settings || {...DEFAULT_SETTINGS};
   STATE.weightLog = weightLog || [];
@@ -667,6 +749,7 @@ async function selectProfile(name){
   STATE.foodLog = foodLog || [];
   STATE.foodLib = foodLib || [];
   STATE.foodDate = todayStr();
+  STATE.mobilityDoneToday = mobilityDone;
   STATE.view = 'today';
   render();
 }
@@ -1005,6 +1088,23 @@ function renderToday(){
       </div>` : ''}
     </div>
 
+    ${s.categories.includes('Upper A') && s.categories.includes('Football') ? `
+    <div class="card">
+      <div class="card-title">Daily mobility</div>
+      ${STATE.mobilityDoneToday ? `
+        <div style="display:flex; align-items:center; gap:10px">
+          <div style="width:28px; height:28px; border-radius:50%; background:#4C8C5B; display:flex; align-items:center; justify-content:center; flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <span style="font-weight:600">Done for today</span>
+        </div>
+      ` : `
+        <div class="subhead" style="margin-bottom:10px">~14 min total — after training, or on a rest day.</div>
+        <button class="btn accent" data-mobility-start>Start</button>
+      `}
+    </div>
+    ` : ''}
+
     <div class="card">
       <div class="card-title">Food today</div>
       ${renderMacroBar('Calories', totals.calories, s.calorieTarget, 'kcal')}
@@ -1138,6 +1238,8 @@ function advanceMobilityStep(){
   if(mob.stepIndex >= mob.steps.length-1){
     mob.done = true;
     clearInterval(__mobilityInterval);
+    dbMarkMobilityComplete(STATE.activeProfile, todayStr());
+    STATE.mobilityDoneToday = true;
     render();
     return;
   }
@@ -1145,16 +1247,18 @@ function advanceMobilityStep(){
   mob.timeLeft = mob.steps[mob.stepIndex].duration;
   render();
 }
+const MOB_RING_R = 85;
+const MOB_RING_CIRC = 2*Math.PI*MOB_RING_R;
 function updateMobilityTimerDOM(){
   const mob = STATE.mobility;
   if(!mob) return;
   const timerEl = document.getElementById('mob-timer');
   if(timerEl) timerEl.textContent = formatTimer(mob.timeLeft);
-  const fillEl = document.getElementById('mob-progress-fill');
-  if(fillEl){
+  const ringEl = document.getElementById('mob-ring');
+  if(ringEl){
     const step = mob.steps[mob.stepIndex];
-    const pct = Math.max(0, Math.min(100, (1 - mob.timeLeft/step.duration)*100));
-    fillEl.style.width = pct+'%';
+    const pct = Math.max(0, Math.min(1, mob.timeLeft/step.duration));
+    ringEl.style.strokeDashoffset = String(MOB_RING_CIRC*(1-pct));
   }
 }
 function renderMobilitySessionPage(){
@@ -1163,29 +1267,38 @@ function renderMobilitySessionPage(){
   if(mob.done){
     return `
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:14px">
-        <div style="font-size:44px">✓</div>
+        <div style="width:64px; height:64px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center;">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+        </div>
         <h2 style="margin-bottom:0">Mobility done</h2>
         <div class="subhead" style="margin-bottom:6px">Nice work — that's the full routine.</div>
-        <button class="btn accent" data-nav="program" style="width:auto; padding:14px 30px">Back to plan</button>
+        <button class="btn accent" data-nav="today" style="width:auto; padding:14px 30px">Back to Today</button>
       </div>
     `;
   }
   const step = mob.steps[mob.stepIndex];
   const next = mob.steps[mob.stepIndex+1];
+  const pct = Math.max(0, Math.min(1, mob.timeLeft/step.duration));
+  const offset = MOB_RING_CIRC*(1-pct);
   return `
     <div style="display:flex; flex-direction:column; min-height:76vh">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
         <button data-mobility-exit style="background:var(--paper-dim); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink)">✕</button>
         <span class="meta">${mob.stepIndex+1} / ${mob.steps.length}</span>
       </div>
-      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:8px">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px">
         ${step.isRest ? `<div class="subhead" style="margin-bottom:0">Rest</div>` : `<div class="meta" style="color:var(--muted)">${step.move.area}</div>`}
-        <h2 style="font-size:24px; margin-bottom:0">${stepLabel(step)}</h2>
-        <div id="mob-timer" class="stat-num" style="font-size:60px; margin:12px 0">${formatTimer(mob.timeLeft)}</div>
-        <div class="bar-track" style="width:75%; height:6px">
-          <div id="mob-progress-fill" class="bar-fill" style="width:0%; background:var(--accent)"></div>
+        <h2 style="font-size:22px; margin-bottom:6px">${stepLabel(step)}</h2>
+        <div style="width:120px; opacity:${step.isRest?0.4:1}">${mobilityIllustration(step.move.name)}</div>
+        <div style="position:relative; width:200px; height:200px; margin:6px auto 0 auto">
+          <svg width="200" height="200" viewBox="0 0 200 200" style="transform:rotate(-90deg)">
+            <circle cx="100" cy="100" r="${MOB_RING_R}" fill="none" stroke="var(--paper-dim)" stroke-width="12"/>
+            <circle id="mob-ring" cx="100" cy="100" r="${MOB_RING_R}" fill="none" stroke="var(--accent)" stroke-width="12"
+              stroke-linecap="round" stroke-dasharray="${MOB_RING_CIRC}" stroke-dashoffset="${offset}"/>
+          </svg>
+          <div id="mob-timer" class="stat-num" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px">${formatTimer(mob.timeLeft)}</div>
         </div>
-        ${next ? `<div class="subhead" style="margin-top:18px; margin-bottom:0">Up next: ${stepLabel(next)}</div>` : ''}
+        ${next ? `<div class="subhead" style="margin-top:14px; margin-bottom:0">Up next: ${stepLabel(next)}</div>` : ''}
       </div>
       <div class="btn-row" style="margin-top:20px">
         <button class="btn ghost" data-mobility-prev ${mob.stepIndex===0?'disabled':''}>Back</button>
@@ -1208,15 +1321,6 @@ function renderProgramPage(){
       <div class="card-title">Next up</div>
       <div style="font-weight:700; font-size:18px">${next.type==='rest' ? 'Rest' : next.session.label}</div>
       ${next.note ? `<div class="subhead" style="margin-top:4px; margin-bottom:0">${next.note}</div>` : ''}
-    </div>
-
-    <div class="card">
-      <div class="card-title">How this works</div>
-      <div class="subhead" style="margin-bottom:0">
-        No fixed days — it's a rolling order. Football replaces whatever's next (that session isn't lost),
-        the day right after football is always full rest, and the day after that you resume exactly
-        where you left off.
-      </div>
     </div>
 
     ${ROTATION.map((r,i)=>{
@@ -1245,21 +1349,6 @@ function renderProgramPage(){
         <div class="list-row" style="padding:7px 0">
           <span>${ex.name}</span>
           <span class="meta">${ex.detail}</span>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Daily mobility · ~14 min total</div>
-      <div class="subhead" style="margin-bottom:6px">After any training day, or standalone on a rest day. Go straight from one move to the next — the only rest is a brief pause when switching sides.</div>
-      <button class="btn accent" data-mobility-start style="margin-bottom:14px">Start</button>
-      ${MOBILITY_ROUTINE.map(m=>`
-        <div class="list-row" style="flex-direction:column; align-items:flex-start; gap:2px; padding:9px 0">
-          <div style="display:flex; justify-content:space-between; width:100%">
-            <span style="font-weight:600">${m.name}</span>
-            <span class="meta">${m.area}</span>
-          </div>
-          <span class="meta" style="color:var(--muted)">${m.work}${m.rest!=='—' ? ' · rest '+m.rest : ''}</span>
         </div>
       `).join('')}
     </div>
