@@ -544,14 +544,17 @@ const ROTATION = [
     {name:'Copenhagen Plank', detail:'3×15s/side'},
     {name:'Nordic Hamstring Curl', detail:'3×6'},
   ]},
-  {key:'Cardio', label:'Cardio (Conditioning)', exercises:[
-    {name:'Warm-up', detail:'5 min easy'},
+  {key:'Cardio', label:'Conditioning + Abs', exercises:[
+    {name:'Warm-up', detail:'5 min easy treadmill walk'},
     {name:'Box Jump', detail:'4×5'},
-    {name:'Lateral Bound', detail:'3×6/side'},
-    {name:'10m Shuttle Runs', detail:'6 reps'},
-    {name:'20m Sprint Starts', detail:'6 reps, full recovery'},
+    {name:'Treadmill Sprint Intervals', detail:'6× 15-20s sprint, 90s walk recovery'},
+    {name:'Treadmill Incline Power Walk', detail:'5 min, 10-15% incline'},
     {name:'Interval Conditioning', detail:'30s hard/90s easy ×8'},
-    {name:'Cooldown', detail:'5 min easy'},
+    {name:'Cooldown', detail:'5 min easy walk'},
+    {name:'Hanging Leg Raise', detail:'3×10'},
+    {name:'Cable Crunch', detail:'3×15'},
+    {name:'Weighted Plank', detail:'3×40s hold'},
+    {name:'Russian Twist', detail:'3×15/side'},
   ]},
   {key:'Upper B', label:'Upper Body (variation)', exercises:[
     {name:'Overhead Press', detail:'4×10'},
@@ -562,10 +565,6 @@ const ROTATION = [
     {name:'Overhead Tricep Extension', detail:'3×10'},
     {name:'Lateral Raise', detail:'3×15'},
     {name:'Pallof Press', detail:'3×40s hold'},
-    {name:'Hanging Leg Raise', detail:'3×10'},
-    {name:'Cable Crunch', detail:'3×15'},
-    {name:'Weighted Plank', detail:'3×40s hold'},
-    {name:'Russian Twist', detail:'3×15/side'},
   ]},
   {key:'Shoulder/Arms', label:'Shoulder/Arms', exercises:[
     {name:'Front Raise', detail:'3×15'},
@@ -1585,6 +1584,17 @@ function renderSettings(){
         <button class="btn ghost sm" id="add-cat">Add</button>
       </div>
     </div>
+    ${s.categories.includes('Upper A') && s.categories.includes('Football') ? `
+    <div class="card">
+      <div class="card-title">Football scheduling rule</div>
+      <div class="subhead" style="margin-bottom:8px">Rotation order: Upper A → Legs → Conditioning+Abs → Upper B → Shoulder/Arms → repeat.</div>
+      <div class="subhead" style="margin-bottom:0">
+        Football isn't tied to a fixed day. Whichever session was due on a football day gets skipped
+        (not lost) — the next day is full rest, and the day after that resumes the rotation exactly
+        where it left off.
+      </div>
+    </div>
+    ` : ''}
     <button class="btn ghost" id="switch-profile-btn">Switch person</button>
   `;
 }
