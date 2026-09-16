@@ -521,6 +521,13 @@ const PROFILES = [
 ];
 
 const ROTATION = [
+  {key:'Legs A', label:'Main compound lifts', exercises:[
+    {name:'Squat', detail:'4×6'},
+    {name:'Romanian Deadlift', detail:'3×8'},
+    {name:'Leg Extension', detail:'3×12'},
+    {name:'Leg Curl', detail:'3×12'},
+    {name:'Calf Raise', detail:'4×15'},
+  ]},
   {key:'Upper A', label:'Upper Body', exercises:[
     {name:'Bench Press', detail:'4×10'},
     {name:'Incline Dumbbell Press', detail:'3×10'},
@@ -531,12 +538,7 @@ const ROTATION = [
     {name:'Lateral Raise', detail:'3×15'},
     {name:'Pallof Press', detail:'3×40s hold'},
   ]},
-  {key:'Legs', label:'Legs', exercises:[
-    {name:'Squat', detail:'4×6'},
-    {name:'Romanian Deadlift', detail:'3×8'},
-    {name:'Leg Extension', detail:'3×12'},
-    {name:'Leg Curl', detail:'3×12'},
-    {name:'Calf Raise', detail:'4×15'},
+  {key:'Legs B', label:'Unilateral + injury-prevention', exercises:[
     {name:'Bulgarian Split Squat', detail:'3×8/leg'},
     {name:'Single-Leg RDL', detail:'3×8/leg'},
     {name:'Hip Adductor Machine', detail:'3×15'},
@@ -581,10 +583,10 @@ const FOOTBALL_INFO = {label:'Football', exercises:[
 const MOBILITY_ROUTINE = [
   {name:'90/90 Hip Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
   {name:'Couch Stretch', area:'Hips', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
-  {name:'Forward Fold', area:'Hamstrings', work:'1.5 min', rest:'—', sides:false, workSec:90, restSec:0},
+  {name:'Forward Fold', area:'Hamstrings', work:'1-2 min', rest:'—', sides:false, workSec:90, restSec:0},
   {name:'Knee-to-Wall Dorsiflexion', area:'Ankles', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
   {name:'Open Book Stretch', area:'Spine', work:'1 min/side (2 min total)', rest:'15s between sides', sides:true, workSec:60, restSec:15},
-  {name:'Band Dislocates', area:'Shoulders', work:'1.5 min', rest:'—', sides:false, workSec:90, restSec:0},
+  {name:'Band Dislocates', area:'Shoulders', work:'1-2 min', rest:'—', sides:false, workSec:90, restSec:0},
   {name:'Cat-Cow', area:'Full Body', work:'1 min', rest:'—', sides:false, workSec:60, restSec:0},
   {name:"World's Greatest Stretch", area:'Full Body', work:'5 reps/side, ~2 min total', rest:'10s between sides', sides:true, workSec:60, restSec:10},
 ];
@@ -1587,7 +1589,7 @@ function renderSettings(){
     ${s.categories.includes('Upper A') && s.categories.includes('Football') ? `
     <div class="card">
       <div class="card-title">Football scheduling rule</div>
-      <div class="subhead" style="margin-bottom:8px">Rotation order: Upper A → Legs → Conditioning+Abs → Upper B → Shoulder/Arms → repeat.</div>
+      <div class="subhead" style="margin-bottom:8px">Rotation order: Legs A → Upper A → Legs B → Conditioning+Abs → Upper B → Shoulder/Arms → repeat.</div>
       <div class="subhead" style="margin-bottom:0">
         Football isn't tied to a fixed day. Whichever session was due on a football day gets skipped
         (not lost) — the next day is full rest, and the day after that resumes the rotation exactly
